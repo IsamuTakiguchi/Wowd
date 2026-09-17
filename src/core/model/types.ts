@@ -338,7 +338,8 @@ export type Mark =
 
 export interface SectionProps {
   id: string
-  pgSz: { w: Twip; h: Twip; orient: 'portrait' | 'landscape' }
+  /** orient が null なのは元ファイルに w:orient 属性が無かったということ (既定は縦) */
+  pgSz: { w: Twip; h: Twip; orient: 'portrait' | 'landscape' | null }
   pgMar: {
     top: Twip
     right: Twip
@@ -348,20 +349,23 @@ export interface SectionProps {
     footer: Twip
     gutter: Twip
   }
-  cols: { num: number; space: Twip; equalWidth: boolean }
+  /** null は元ファイルに w:cols が無かったということ。無い要素を勝手に足さないため */
+  cols: { num: number; space: Twip; equalWidth: boolean } | null
   /**
    * w:docGrid — 「文字数と行数」。
    * charPitch_pt = normalFontSize_pt + charSpace / 4096
    * linesPerPage = floor(textHeight_twip / linePitch)
    */
   docGrid: {
-    type: 'default' | 'lines' | 'linesAndChars' | 'snapToChars'
+    /** null は w:type 属性が無かったということ */
+    type: 'default' | 'lines' | 'linesAndChars' | 'snapToChars' | null
     linePitch: Twip
     charSpace: number
   } | null
   headerRefs: { default?: string; first?: string; even?: string }
   footerRefs: { default?: string; first?: string; even?: string }
   titlePg: boolean
+  /** 空オブジェクトは「w:pgNumType が属性なしで存在した」ことを表す。null は不在 */
   pgNumType: { start?: number; fmt?: string } | null
   type: 'nextPage' | 'continuous' | 'evenPage' | 'oddPage'
   /** 未対応の w:sectPr 子要素 */

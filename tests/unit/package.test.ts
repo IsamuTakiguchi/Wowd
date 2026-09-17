@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { unzipSync } from 'fflate'
+import { unzipSync, zipSync, strToU8 } from 'fflate'
 import {
   openPackage,
   savePackage,
@@ -26,7 +26,6 @@ describe('openPackage', () => {
   })
 
   it('[Content_Types].xml が無い zip は拒否する', () => {
-    const { zipSync, strToU8 } = require('fflate') as typeof import('fflate')
     const bogus = zipSync({ 'hello.txt': strToU8('hi') })
     expect(() => openPackage(bogus)).toThrow(/Content_Types/)
   })
