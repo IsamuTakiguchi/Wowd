@@ -6,6 +6,7 @@ import { FindReplace } from './components/FindReplace'
 import { CommentsPane } from './components/CommentsPane'
 import { RubyDialog } from './components/dialogs/RubyDialog'
 import { PageSetupDialog } from './components/dialogs/PageSetupDialog'
+import { HeaderFooterDialog } from './components/dialogs/HeaderFooterDialog'
 import { WowdEditor } from './editor/Editor'
 import { useDocumentStore } from './store/document'
 import { useUiStore } from './store/ui'
@@ -183,6 +184,7 @@ export function App(): React.JSX.Element {
         onClose={() => openDialog(null)}
       />
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
+      <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
 
       <StatusBar editor={editor} />
     </div>

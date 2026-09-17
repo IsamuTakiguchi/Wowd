@@ -177,10 +177,17 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
         </RibbonRow>
       </RibbonGroup>
 
-      <PendingGroup
-        label="ヘッダー"
-        items={['ヘッダーとフッターの編集', 'ページ番号の挿入']}
-      />
+      <RibbonGroup label="ヘッダーとフッター">
+        <RibbonRow>
+          <RibbonButton
+            label="ヘッダーとフッター"
+            title="ヘッダーとフッターを編集する"
+            wide
+            disabled={!document_ || !section}
+            onClick={() => openDialog('headerFooter')}
+          />
+        </RibbonRow>
+      </RibbonGroup>
     </div>
   )
 }

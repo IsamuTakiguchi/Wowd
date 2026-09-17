@@ -14,6 +14,8 @@ export interface DocumentState {
   numberingChanged: boolean
   /** コメントを編集したら comments.xml も書き直す必要がある */
   commentsChanged: boolean
+  /** ヘッダー / フッターを編集したらそのパートも書き直す必要がある */
+  headersChanged: boolean
   busy: boolean
   error: string | null
   /** 読み込み時に見つかった未対応要素。空でなければ画面に出す */
@@ -49,6 +51,13 @@ export interface DocumentState {
   updateComments: (
     patch: (comments: Map<string, CommentRecord>) => Map<string, CommentRecord>
   ) => void
+  /**
+   * ヘッダー / フッターを差し替える。
+   *
+   * 資源を作り直して参照を変えることで画面が再描画される。
+   * その場で書き換えると参照が同じままで、用紙の飾りが更新されない。
+   */
+  updateHeaderFooter: (kind: 'header' | 'footer', relId: string, doc: WowdDoc) => void
 
   newDocument: (template: 'blank-a4' | 'blank-ja-b5') => Promise<void>
   openBytes: (bytes: Uint8Array, filePath: string | null) => Promise<void>
@@ -75,6 +84,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   dirty: false,
   numberingChanged: false,
   commentsChanged: false,
+  headersChanged: false,
   busy: false,
   error: null,
   unsupported: [],
@@ -100,6 +110,25 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       document: { ...current, resources: { ...current.resources, comments } },
       dirty: true,
       commentsChanged: true
+    })
+  },
+
+  updateHeaderFooter: (kind, relId, next) => {
+    const current = get().document
+    if (!current) return
+    const source = kind === 'header' ? current.resources.headers : current.resources.footers
+    const replaced = new Map(source).set(relId, next)
+    set({
+      document: {
+        ...current,
+        resources: {
+          ...current.resources,
+          headers: kind === 'header' ? replaced : current.resources.headers,
+          footers: kind === 'footer' ? replaced : current.resources.footers
+        }
+      },
+      dirty: true,
+      headersChanged: true
     })
   },
 
@@ -131,6 +160,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         dirty: false,
         numberingChanged: false,
         commentsChanged: false,
+        headersChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -153,6 +183,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         dirty: false,
         numberingChanged: false,
         commentsChanged: false,
+        headersChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -189,7 +220,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async saveToBytes() {
-    const { document, sourceBytes, numberingChanged, commentsChanged, saveBlockedReason } = get()
+    const { document, sourceBytes, numberingChanged, commentsChanged, headersChanged, saveBlockedReason } =
+      get()
     if (!document || !sourceBytes) return []
     // 表示に失敗している状態で保存するとエディタの中身 (前の文書) を
     // 書き出してしまう。writeTo と同じく止める
@@ -197,7 +229,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const latest = docProvider?.() ?? document.doc
     const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, {
       numberingChanged,
-      commentsChanged
+      commentsChanged,
+      headersChanged
     })
     return Array.from(bytes)
   },
@@ -217,7 +250,8 @@ type Set = (partial: Partial<DocumentState>) => void
 let docProvider: (() => WowdDoc) | null = null
 
 async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
-  const { document, sourceBytes, numberingChanged, commentsChanged, saveBlockedReason } = get()
+  const { document, sourceBytes, numberingChanged, commentsChanged, headersChanged, saveBlockedReason } =
+      get()
   if (!document || !sourceBytes) return false
   if (saveBlockedReason) {
     set({ error: `保存を中止しました。${saveBlockedReason}` })
@@ -230,7 +264,8 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
     const toSave: WowdDocument = { ...document, doc: latest }
     const bytes = await docxClient.save(toSave, sourceBytes, {
       numberingChanged,
-      commentsChanged
+      commentsChanged,
+      headersChanged
     })
     await window.wowd.writeFile(path, bytes)
     await window.wowd.addRecent(path)
@@ -241,6 +276,7 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
       dirty: false,
       numberingChanged: false,
       commentsChanged: false,
+      headersChanged: false,
       sourceBytes: bytes
     })
     return true

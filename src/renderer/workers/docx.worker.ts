@@ -28,6 +28,7 @@ export interface SaveRequest {
   document: WowdDocument
   numberingChanged: boolean
   commentsChanged: boolean
+  headersChanged: boolean
 }
 
 export type WorkerRequest = OpenRequest | SaveRequest
@@ -58,7 +59,8 @@ function handle(req: WorkerRequest): WorkerResponse {
   const pkg = openPackage(req.sourceBytes)
   const bytes = writeDocx(req.document, pkg, {
     numberingChanged: req.numberingChanged,
-    commentsChanged: req.commentsChanged
+    commentsChanged: req.commentsChanged,
+    headersChanged: req.headersChanged
   })
   return { kind: 'save', id: req.id, ok: true, bytes }
 }

@@ -129,6 +129,11 @@ export function writeBlock(node: BlockNode, sections: Map<string, SectionProps>)
   }
 }
 
+/** ブロックの並びをそのまま並べる。ヘッダー / フッターのパートで使う */
+export function writeBlocks(blocks: BlockNode[], sections: Map<string, SectionProps>): string {
+  return blocks.map((b) => writeBlock(b, sections)).join('')
+}
+
 /**
  * w:body を組み立てる。
  *

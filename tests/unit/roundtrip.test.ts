@@ -4,6 +4,7 @@ import { readDocx } from '@core/docx/read'
 import { writeDocx } from '@core/docx/write'
 import { openPackage } from '@core/docx/package'
 import { fixtureNames, readFixture } from './helpers'
+import { fromEditableText, toEditableText } from '@core/headerFooter'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -386,5 +387,70 @@ describe('画像の挿入', () => {
     const before = unzipSync(source)['word/media/image1.png']
     const after = unzipSync(saved)['word/media/image1.png']
     expect(after).toEqual(before)
+  })
+})
+
+describe('ヘッダーとフッター', () => {
+  const HEADER_REL =
+    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header'
+
+  it('新しいヘッダーがパート・関係・コンテンツタイプ・参照ごと保存される', () => {
+    const source = readFixture('01-plain.docx')
+    const model = readDocx(source, '01-plain.docx')
+
+    const relId = `rId${model.resources.rels.nextId}`
+    model.resources.rels.byId.set(relId, {
+      id: relId,
+      type: HEADER_REL,
+      target: 'header1.xml',
+      targetMode: null
+    })
+    model.resources.headers.set(relId, fromEditableText('社外秘', 'right'))
+    const section = model.resources.sections[0]
+    if (!section) throw new Error('セクションが無い')
+    section.headerRefs = { ...section.headerRefs, default: relId }
+
+    const saved = writeDocx(model, model.pkg, { headersChanged: true })
+    const parts = unzipSync(saved)
+
+    // 1. パートの中身
+    const hdr = strFromU8(parts['word/header1.xml'] as Uint8Array)
+    expect(hdr).toContain('<w:hdr')
+    expect(hdr).toContain('社外秘')
+    expect(hdr).toContain('<w:jc w:val="right"/>')
+
+    // 2. 関係
+    const rels = strFromU8(parts['word/_rels/document.xml.rels'] as Uint8Array)
+    expect(rels).toContain(`Id="${relId}"`)
+    expect(rels).toContain('header1.xml')
+
+    // 3. コンテンツタイプ
+    const types = strFromU8(parts['[Content_Types].xml'] as Uint8Array)
+    expect(types).toContain('wordprocessingml.header+xml')
+
+    // 4. セクションからの参照
+    const xml = strFromU8(parts['word/document.xml'] as Uint8Array)
+    expect(xml).toContain('<w:headerReference')
+    expect(xml).toContain(`r:id="${relId}"`)
+
+    // 読み直すと同じ内容で戻る
+    const again = readDocx(saved, '01-plain.docx')
+    expect(toEditableText(again.resources.headers.get(relId) ?? null)).toEqual({
+      text: '社外秘',
+      jc: 'right'
+    })
+  })
+
+  it('headersChanged を立てなければヘッダーのパートに触らない', () => {
+    const source = readFixture('05-kitchen-sink.docx')
+    const model = readDocx(source, '05-kitchen-sink.docx')
+    const saved = writeDocx(model, model.pkg)
+
+    const before = unzipSync(source)
+    const after = unzipSync(saved)
+    for (const name of Object.keys(before)) {
+      if (!/header\d*\.xml$|footer\d*\.xml$/.test(name)) continue
+      expect(after[name], `${name} が書き換わった`).toEqual(before[name])
+    }
   })
 })

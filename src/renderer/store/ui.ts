@@ -13,7 +13,7 @@ export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' |
 export type ViewMode = 'print' | 'draft'
 
 /** 開いているモーダルダイアログ */
-export type DialogKind = 'ruby' | 'pageSetup' | null
+export type DialogKind = 'ruby' | 'pageSetup' | 'headerFooter' | null
 
 /**
  * 変更履歴の表示モード。

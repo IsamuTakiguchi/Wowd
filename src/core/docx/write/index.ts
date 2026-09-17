@@ -5,12 +5,19 @@ import {
   ensureDefaultContentType,
   ensureRelationship,
   relsPartNameFor,
+  resolveRelTarget,
+  REL_TYPE,
   type DocxPackage
 } from '../package'
 import { XML_DECL, wrap } from '../xml'
 import { writeBody } from './body'
 import { writeNumbering } from './numbering'
 import { writeComments, writeCommentsExtended } from './comments'
+import {
+  writeHeadersFooters,
+  HEADER_CONTENT_TYPE,
+  FOOTER_CONTENT_TYPE
+} from './headerFooter'
 
 /**
  * w:document のルート要素に必要な名前空間宣言。
@@ -46,6 +53,8 @@ export interface WriteOptions {
   numberingChanged?: boolean
   /** comments.xml も書き直すか。コメントを編集したときだけ true にする */
   commentsChanged?: boolean
+  /** ヘッダー / フッターのパートも書き直すか */
+  headersChanged?: boolean
 }
 
 /**
@@ -76,9 +85,55 @@ export function writeDocx(
     writeExtendedComments(doc, pkg, overrides)
   }
 
+  if (options.headersChanged) {
+    writeHeadersFooters(doc, pkg, overrides)
+    ensureHeaderFooterParts(doc, pkg, overrides)
+  }
+
   writeNewMedia(doc, pkg, overrides)
 
   return savePackage(pkg, { overrides })
+}
+
+/**
+ * 元パッケージに無いヘッダー / フッターのパートに、関係とコンテンツタイプを足す。
+ *
+ * パートの中身は writeHeadersFooters が既に overrides に入れている。
+ * 関係とコンテンツタイプが無いと、書いたパートを Word が見つけられない。
+ */
+function ensureHeaderFooterParts(
+  doc: WowdDocument,
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>
+): void {
+  const relsPart = relsPartNameFor(doc.resources.documentPartName)
+  let relsXml = decodePart(pkg, relsPart)
+  let contentTypes = decodePart(pkg, '[Content_Types].xml')
+  let changed = false
+
+  for (const rel of doc.resources.rels.byId.values()) {
+    const kind =
+      rel.type === REL_TYPE.header ? 'header' : rel.type === REL_TYPE.footer ? 'footer' : null
+    if (!kind) continue
+    const partName = resolveRelTarget(doc.resources.documentPartName, rel.target)
+    // すでにパッケージにあるものは関係もコンテンツタイプも揃っている
+    if (pkg.parts.has(partName)) continue
+    if (!overrides.has(partName)) continue
+
+    changed = true
+    if (relsXml) relsXml = ensureRelationship(relsXml, rel.id, rel.type, rel.target)
+    if (contentTypes) {
+      contentTypes = ensureOverrideContentType(
+        contentTypes,
+        partName,
+        kind === 'header' ? HEADER_CONTENT_TYPE : FOOTER_CONTENT_TYPE
+      )
+    }
+  }
+
+  if (!changed) return
+  if (relsXml) overrides.set(relsPart, relsXml)
+  if (contentTypes) overrides.set('[Content_Types].xml', contentTypes)
 }
 
 const IMAGE_REL_TYPE =
