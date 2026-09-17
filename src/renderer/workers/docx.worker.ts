@@ -27,6 +27,7 @@ export interface SaveRequest {
   sourceBytes: Uint8Array
   document: WowdDocument
   numberingChanged: boolean
+  commentsChanged: boolean
 }
 
 export type WorkerRequest = OpenRequest | SaveRequest
@@ -55,7 +56,10 @@ function handle(req: WorkerRequest): WorkerResponse {
   // 保存は必ず「開いたときのパッケージ」から始める。
   // これが未対応パートをバイト単位で保つ唯一の方法。
   const pkg = openPackage(req.sourceBytes)
-  const bytes = writeDocx(req.document, pkg, { numberingChanged: req.numberingChanged })
+  const bytes = writeDocx(req.document, pkg, {
+    numberingChanged: req.numberingChanged,
+    commentsChanged: req.commentsChanged
+  })
   return { kind: 'save', id: req.id, ok: true, bytes }
 }
 

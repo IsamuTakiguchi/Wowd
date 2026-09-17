@@ -90,6 +90,22 @@ test('段落の配置を変えられる', async () => {
   expect(align).toBe('center')
 })
 
+test('Word と同じキー操作で配置を変えられる', async () => {
+  await typeBody('キー操作で寄せる段落')
+  const alignOf = (): Promise<string> =>
+    page
+      .locator('.wowd-content p')
+      .first()
+      .evaluate((el) => getComputedStyle(el).textAlign)
+
+  await page.keyboard.press('Control+e')
+  expect(await alignOf()).toBe('center')
+  await page.keyboard.press('Control+r')
+  expect(await alignOf()).toBe('right')
+  await page.keyboard.press('Control+l')
+  expect(await alignOf()).toBe('left')
+})
+
 test('検索パネルで一致件数が出て、全角半角を区別しない', async () => {
   await typeBody('テストと ﾃｽﾄ と test')
   await page.locator('button[title="検索と置換"]').click()

@@ -27,6 +27,8 @@ export interface UiState {
   /** 文書全体のページ数 */
   pageCount: number
   dialog: DialogKind
+  /** コメントペインを開いているか */
+  commentsOpen: boolean
 
   setTab: (tab: RibbonTab) => void
   setZoom: (zoom: number) => void
@@ -36,6 +38,7 @@ export interface UiState {
   toggleGrid: (on?: boolean) => void
   setPageInfo: (current: number, count: number) => void
   openDialog: (kind: DialogKind) => void
+  toggleComments: (open?: boolean) => void
 }
 
 export const MIN_ZOOM = 50
@@ -50,6 +53,7 @@ export const useUiStore = create<UiState>((set) => ({
   currentPage: 1,
   pageCount: 1,
   dialog: null,
+  commentsOpen: false,
 
   setTab: (tab) => set({ tab }),
   setZoom: (zoom) => set({ zoom: clamp(zoom) }),
@@ -59,6 +63,7 @@ export const useUiStore = create<UiState>((set) => ({
   setViewMode: (viewMode) => set({ viewMode }),
   toggleGrid: (on) => set((s) => ({ showGrid: on ?? !s.showGrid })),
   openDialog: (dialog) => set({ dialog }),
+  toggleComments: (open) => set((s) => ({ commentsOpen: open ?? !s.commentsOpen })),
   setPageInfo: (currentPage, pageCount) =>
     set((s) =>
       s.currentPage === currentPage && s.pageCount === pageCount ? s : { currentPage, pageCount }

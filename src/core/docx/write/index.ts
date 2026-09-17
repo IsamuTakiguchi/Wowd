@@ -1,8 +1,15 @@
 import type { WowdDocument, SectionProps } from '../../model/types'
-import { savePackage, type DocxPackage } from '../package'
+import {
+  savePackage,
+  ensureOverrideContentType,
+  ensureRelationship,
+  relsPartNameFor,
+  type DocxPackage
+} from '../package'
 import { XML_DECL, wrap } from '../xml'
 import { writeBody } from './body'
 import { writeNumbering } from './numbering'
+import { writeComments, writeCommentsExtended } from './comments'
 
 /**
  * w:document のルート要素に必要な名前空間宣言。
@@ -36,6 +43,8 @@ export function writeDocumentXml(doc: WowdDocument, originalXml: string | null):
 export interface WriteOptions {
   /** numbering.xml も書き直すか。リストを編集したときだけ true にする */
   numberingChanged?: boolean
+  /** comments.xml も書き直すか。コメントを編集したときだけ true にする */
+  commentsChanged?: boolean
 }
 
 /**
@@ -60,12 +69,69 @@ export function writeDocx(
     if (numberingPart) overrides.set(numberingPart, writeNumbering(doc.resources.numbering))
   }
 
+  if (options.commentsChanged) {
+    const commentsPart = findPart(pkg, 'comments.xml')
+    if (commentsPart) overrides.set(commentsPart, writeComments(doc.resources.comments))
+    writeExtendedComments(doc, pkg, overrides)
+  }
+
   return savePackage(pkg, { overrides })
 }
 
+/** commentsExtended のパート名・関係・コンテンツタイプ */
+const EXTENDED_PART = 'word/commentsExtended.xml'
+const EXTENDED_REL_TYPE =
+  'http://schemas.microsoft.com/office/2011/relationships/commentsExtended'
+const EXTENDED_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml'
+
+/**
+ * commentsExtended.xml を書く。
+ *
+ * このパートはスレッドの親子関係と解決状態を持つ。
+ * 文書にまだ無ければ、パート・関係・コンテンツタイプをまとめて作る。
+ * 作らないと、返信も「解決済み」も保存した時点で失われる。
+ */
+function writeExtendedComments(
+  doc: WowdDocument,
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>
+): void {
+  const existing = findPart(pkg, 'commentsExtended.xml')
+  const partName = existing ?? EXTENDED_PART
+  overrides.set(partName, writeCommentsExtended(doc.resources.comments))
+  if (existing) return
+
+  // 新規に作る場合は関係とコンテンツタイプも足す
+  const relsPart = relsPartNameFor(doc.resources.documentPartName)
+  const relsXml = decodePart(pkg, relsPart)
+  if (relsXml) {
+    const id = `rId${doc.resources.rels.nextId}`
+    const target = partName.replace(/^word\//, '')
+    overrides.set(relsPart, ensureRelationship(relsXml, id, EXTENDED_REL_TYPE, target))
+  }
+
+  const contentTypes = decodePart(pkg, '[Content_Types].xml')
+  if (contentTypes) {
+    overrides.set(
+      '[Content_Types].xml',
+      ensureOverrideContentType(contentTypes, partName, EXTENDED_CONTENT_TYPE)
+    )
+  }
+}
+
+function decodePart(pkg: DocxPackage, name: string): string | null {
+  const bytes = pkg.parts.get(name)
+  return bytes ? new TextDecoder().decode(bytes) : null
+}
+
 function findNumberingPart(pkg: DocxPackage): string | null {
+  return findPart(pkg, 'numbering.xml')
+}
+
+function findPart(pkg: DocxPackage, fileName: string): string | null {
   for (const name of pkg.parts.keys()) {
-    if (name.endsWith('/numbering.xml') || name === 'numbering.xml') return name
+    if (name.endsWith(`/${fileName}`) || name === fileName) return name
   }
   return null
 }

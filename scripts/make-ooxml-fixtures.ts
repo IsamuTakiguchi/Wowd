@@ -203,6 +203,55 @@ function revisionsDoc(): string {
   )
 }
 
+/** 14: 返信つきスレッドコメント */
+function threadedCommentsDoc(): {
+  body: string
+  comments: string
+  extended: string
+} {
+  const body =
+    `<w:p>` +
+    `<w:commentRangeStart w:id="0"/>` +
+    text('コメントが付いた最初の範囲') +
+    `<w:commentRangeEnd w:id="0"/>` +
+    `<w:r><w:commentReference w:id="0"/></w:r>` +
+    `</w:p>` +
+    `<w:p>` +
+    `<w:commentRangeStart w:id="2"/>` +
+    text('別のコメントが付いた範囲') +
+    `<w:commentRangeEnd w:id="2"/>` +
+    `<w:r><w:commentReference w:id="2"/></w:r>` +
+    `</w:p>` +
+    SECT_A4
+
+  const comment = (id: string, author: string, initials: string, paraId: string, content: string): string =>
+    `<w:comment w:id="${id}" w:author="${author}" w:initials="${initials}" w:date="2026-01-0${Number(id) + 1}T00:00:00Z">` +
+    `<w:p w14:paraId="${paraId}"><w:r><w:t xml:space="preserve">${content}</w:t></w:r></w:p>` +
+    `</w:comment>`
+
+  const comments =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n` +
+    `<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ` +
+    `xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" ` +
+    `xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14">` +
+    comment('0', '校閲者A', 'A', '11111111', 'ここは検討が必要です。') +
+    comment('1', '校閲者B', 'B', '22222222', '同意します。修正しました。') +
+    comment('2', '校閲者A', 'A', '33333333', '解決済みのコメント。') +
+    `</w:comments>`
+
+  // id=1 は id=0 への返信。id=2 は解決済み
+  const extended =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n` +
+    `<w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" ` +
+    `xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w15">` +
+    `<w15:commentEx w15:paraId="11111111" w15:done="0"/>` +
+    `<w15:commentEx w15:paraId="22222222" w15:paraIdParent="11111111" w15:done="0"/>` +
+    `<w15:commentEx w15:paraId="33333333" w15:done="1"/>` +
+    `</w15:commentsEx>`
+
+  return { body, comments, extended }
+}
+
 /** 13: 目次の材料になる見出し構成 */
 function headingsDoc(): string {
   const heading = (text: string, level: number): string =>
@@ -271,6 +320,14 @@ function main(): void {
   emit('10-revisions.docx', 'blank-a4.docx', revisionsDoc())
   emit('11-hostile.docx', 'blank-a4.docx', hostileDoc())
   emit('13-headings.docx', 'blank-a4.docx', headingsDoc())
+
+  const threaded = threadedCommentsDoc()
+  emit('14-comments.docx', 'blank-a4.docx', threaded.body, {
+    parts: new Map([
+      ['word/comments.xml', new TextEncoder().encode(threaded.comments)],
+      ['word/commentsExtended.xml', new TextEncoder().encode(threaded.extended)]
+    ])
+  })
   emit('12-image.docx', 'blank-a4.docx', imageDoc(), {
     parts: new Map([['word/media/image1.png', new Uint8Array(readFileSync(SAMPLE_PNG))]]),
     rels: [{ id: 'rId100', type: IMAGE_REL, target: 'media/image1.png' }],

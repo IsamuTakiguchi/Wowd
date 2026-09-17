@@ -331,12 +331,34 @@ export function ReferencesTab({ editor }: { editor: Editor | null }): React.JSX.
   )
 }
 
-export function ReviewTab(): React.JSX.Element {
+export function ReviewTab({ editor }: { editor: Editor | null }): React.JSX.Element {
+  const commentsOpen = useUiStore((s) => s.commentsOpen)
+  const toggleComments = useUiStore((s) => s.toggleComments)
+  const document_ = useDocumentStore((s) => s.document)
+  const count = document_?.resources.comments.size ?? 0
+
   return (
     <div className="ribbon-tab-body">
+      <RibbonGroup label="コメント">
+        <RibbonRow>
+          <RibbonButton
+            label="コメントの表示"
+            title="コメントの一覧を開閉する"
+            wide
+            active={commentsOpen}
+            disabled={!editor}
+            onClick={() => toggleComments()}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <span className="ribbon-readout" data-testid="comment-count">
+            {count > 0 ? `${count} 件` : 'コメントなし'}
+          </span>
+        </RibbonRow>
+      </RibbonGroup>
       <PendingGroup
-        label="コメントと変更履歴"
-        items={['新しいコメント', '変更履歴の記録', '承諾 / 元に戻す', '変更箇所の表示']}
+        label="変更履歴"
+        items={['変更履歴の記録', '承諾 / 元に戻す', '変更箇所の表示切り替え']}
       />
     </div>
   )

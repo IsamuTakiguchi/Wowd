@@ -20,6 +20,7 @@ import { parseXml, tagOf, attr, findChild, findChildren, intAttr, boolVal, type 
 import { readBody } from './body'
 import { readStyles, emptyStyleTable } from './styles'
 import { readNumbering } from './numbering'
+import { readComments } from './comments'
 import { defaultSection } from './section'
 import type { RunContext } from './run'
 import { emptyNumberingTable } from '../../numbering/resolve'
@@ -150,6 +151,9 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
   const numberingPart = relTargetPart(pkg, rels, REL_TYPE.numbering)
   const settingsPart = relTargetPart(pkg, rels, REL_TYPE.settings)
   const themePart = relTargetPart(pkg, rels, REL_TYPE.theme)
+  const commentsPart = relTargetPart(pkg, rels, REL_TYPE.comments)
+  // commentsExtended は関係を持たないことがあるのでパート名で直接探す
+  const extendedPart = [...pkg.parts.keys()].find((n) => n.endsWith('commentsExtended.xml')) ?? null
 
   const documentXml = readPartText(pkg, pkg.documentPartName)
   if (!documentXml) throw new Error('本文パートを読めませんでした')
@@ -200,7 +204,13 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     numbering: numberingPart ? readNumbering(readPartText(pkg, numberingPart)) : emptyNumberingTable(),
     theme: themePart ? readTheme(readPartText(pkg, themePart)) : readTheme(null),
     settings: readSettings(settingsPart ? readPartText(pkg, settingsPart) : null),
-    comments: new Map(),
+    comments: commentsPart
+      ? readComments(
+          readPartText(pkg, commentsPart),
+          extendedPart ? readPartText(pkg, extendedPart) : null,
+          ctx
+        )
+      : new Map(),
     headers,
     footers,
     media: collectMedia(pkg, rels),

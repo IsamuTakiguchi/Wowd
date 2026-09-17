@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { WowdDocument, WowdDoc, SectionProps } from '@core/model/types'
+import type { WowdDocument, WowdDoc, SectionProps, CommentRecord } from '@core/model/types'
 import { docxClient } from '../workers/client'
 import { t } from '../i18n/ja'
 
@@ -12,6 +12,8 @@ export interface DocumentState {
   dirty: boolean
   /** リストやスタイルを編集したら numbering.xml も書き直す必要がある */
   numberingChanged: boolean
+  /** コメントを編集したら comments.xml も書き直す必要がある */
+  commentsChanged: boolean
   busy: boolean
   error: string | null
   /** 読み込み時に見つかった未対応要素。空でなければ画面に出す */
@@ -43,6 +45,10 @@ export interface DocumentState {
    * 別の印で再描画を促す必要が出てしまう。
    */
   updateSection: (index: number, patch: (section: SectionProps) => SectionProps) => void
+  /** コメントを差し替える。書き直しが必要な印も立てる */
+  updateComments: (
+    patch: (comments: Map<string, CommentRecord>) => Map<string, CommentRecord>
+  ) => void
 
   newDocument: (template: 'blank-a4' | 'blank-ja-b5') => Promise<void>
   openBytes: (bytes: Uint8Array, filePath: string | null) => Promise<void>
@@ -68,6 +74,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   filePath: null,
   dirty: false,
   numberingChanged: false,
+  commentsChanged: false,
   busy: false,
   error: null,
   unsupported: [],
@@ -84,6 +91,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   markNumberingChanged: () => set({ numberingChanged: true, dirty: true }),
   setError: (message) => set({ error: message }),
   blockSaving: (reason) => set({ saveBlockedReason: reason, error: reason }),
+
+  updateComments: (patch) => {
+    const current = get().document
+    if (!current) return
+    const comments = patch(current.resources.comments)
+    set({
+      document: { ...current, resources: { ...current.resources, comments } },
+      dirty: true,
+      commentsChanged: true
+    })
+  },
 
   updateSection: (index, patch) => {
     const current = get().document
@@ -112,6 +130,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         filePath: null,
         dirty: false,
         numberingChanged: false,
+        commentsChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -133,6 +152,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         filePath,
         dirty: false,
         numberingChanged: false,
+        commentsChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -169,13 +189,16 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async saveToBytes() {
-    const { document, sourceBytes, numberingChanged, saveBlockedReason } = get()
+    const { document, sourceBytes, numberingChanged, commentsChanged, saveBlockedReason } = get()
     if (!document || !sourceBytes) return []
     // 表示に失敗している状態で保存するとエディタの中身 (前の文書) を
     // 書き出してしまう。writeTo と同じく止める
     if (saveBlockedReason) return []
     const latest = docProvider?.() ?? document.doc
-    const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, numberingChanged)
+    const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, {
+      numberingChanged,
+      commentsChanged
+    })
     return Array.from(bytes)
   },
 
@@ -194,7 +217,7 @@ type Set = (partial: Partial<DocumentState>) => void
 let docProvider: (() => WowdDoc) | null = null
 
 async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
-  const { document, sourceBytes, numberingChanged, saveBlockedReason } = get()
+  const { document, sourceBytes, numberingChanged, commentsChanged, saveBlockedReason } = get()
   if (!document || !sourceBytes) return false
   if (saveBlockedReason) {
     set({ error: `保存を中止しました。${saveBlockedReason}` })
@@ -205,7 +228,10 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
     // 保存の直前にだけエディタから最新のツリーを引き出す
     const latest = docProvider?.() ?? document.doc
     const toSave: WowdDocument = { ...document, doc: latest }
-    const bytes = await docxClient.save(toSave, sourceBytes, numberingChanged)
+    const bytes = await docxClient.save(toSave, sourceBytes, {
+      numberingChanged,
+      commentsChanged
+    })
     await window.wowd.writeFile(path, bytes)
     await window.wowd.addRecent(path)
     // 保存後は出力を新しい原本とする。次の保存もここから差分を作る
@@ -214,6 +240,7 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
       filePath: path,
       dirty: false,
       numberingChanged: false,
+      commentsChanged: false,
       sourceBytes: bytes
     })
     return true

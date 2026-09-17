@@ -48,7 +48,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
         {tab === 'insert' && <InsertTab editor={editor} />}
         {tab === 'layout' && <LayoutTab />}
         {tab === 'references' && <ReferencesTab editor={editor} />}
-        {tab === 'review' && <ReviewTab />}
+        {tab === 'review' && <ReviewTab editor={editor} />}
         {tab === 'view' && <ViewTab />}
       </div>
     </header>

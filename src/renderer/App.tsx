@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { Ribbon } from './components/Ribbon'
 import { StatusBar } from './components/StatusBar'
 import { FindReplace } from './components/FindReplace'
+import { CommentsPane } from './components/CommentsPane'
 import { RubyDialog } from './components/dialogs/RubyDialog'
 import { PageSetupDialog } from './components/dialogs/PageSetupDialog'
 import { WowdEditor } from './editor/Editor'
@@ -134,6 +135,7 @@ export function App(): React.JSX.Element {
       <main className="app-body">
         <WowdEditor onReady={onReady} />
         <FindReplace editor={editor} />
+        <CommentsPane editor={editor} />
       </main>
 
       <RubyDialog

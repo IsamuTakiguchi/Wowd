@@ -212,6 +212,33 @@ function stripBom(s: string): string {
  * [Content_Types].xml に拡張子の既定エントリが無ければ追加する。
  * 画像を新規に埋め込むときに必要。
  */
+/**
+ * [Content_Types].xml に特定パートの Override を追加する。
+ * 既定の拡張子では表せないパート (commentsExtended など) に必要。
+ */
+export function ensureOverrideContentType(
+  contentTypesXml: string,
+  partName: string,
+  contentType: string
+): string {
+  const path = partName.startsWith('/') ? partName : `/${partName}`
+  if (contentTypesXml.includes(`PartName="${path}"`)) return contentTypesXml
+  const entry = `<Override PartName="${path}" ContentType="${contentType}"/>`
+  return contentTypesXml.replace('</Types>', `${entry}</Types>`)
+}
+
+/** _rels に関係を追加する。既に同じ Target があれば何もしない */
+export function ensureRelationship(
+  relsXml: string,
+  id: string,
+  type: string,
+  target: string
+): string {
+  if (relsXml.includes(`Target="${target}"`)) return relsXml
+  const entry = `<Relationship Id="${id}" Type="${type}" Target="${target}"/>`
+  return relsXml.replace('</Relationships>', `${entry}</Relationships>`)
+}
+
 export function ensureDefaultContentType(
   contentTypesXml: string,
   extension: string,
