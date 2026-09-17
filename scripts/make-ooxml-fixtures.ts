@@ -331,7 +331,50 @@ function imageDoc(): string {
     para(text('次は画像です。')) +
     para(`<w:r>${drawing}</w:r>`) +
     para(text('画像の後の段落。')) +
+    // 浮動画像 (wp:anchor)。レターヘッドのロゴなどで普通に使われる。
+    // 回り込みの種類ごとに読み取りが変わるので、主要な 4 種を入れておく
+    para(text('ここから浮動画像です。')) +
+    para(`<w:r>${anchoredDrawing('<wp:wrapSquare wrapText="bothSides"/>')}</w:r>`) +
+    // wrapTight は wrapPolygon を必ず持つ (CT_WrapTight)
+    para(`<w:r>${anchoredDrawing(WRAP_TIGHT)}</w:r>`) +
+    para(`<w:r>${anchoredDrawing('<wp:wrapTopAndBottom/>')}</w:r>`) +
+    para(`<w:r>${anchoredDrawing('<wp:wrapNone/>', '1')}</w:r>`) +
+    para(`<w:r>${anchoredDrawing('<wp:wrapNone/>', '0')}</w:r>`) +
     SECT_A4
+  )
+}
+
+/** 回り込みの輪郭。wp:wrapTight は wrapPolygon が必須 */
+const WRAP_TIGHT =
+  `<wp:wrapTight wrapText="bothSides"><wp:wrapPolygon edited="0">` +
+  `<wp:start x="0" y="0"/>` +
+  `<wp:lineTo x="0" y="21600"/>` +
+  `<wp:lineTo x="21600" y="21600"/>` +
+  `<wp:lineTo x="21600" y="0"/>` +
+  `<wp:lineTo x="0" y="0"/>` +
+  `</wp:wrapPolygon></wp:wrapTight>`
+
+/** wp:anchor の浮動画像。behindDoc="1" なら本文の背面に回る */
+function anchoredDrawing(wrap: string, behindDoc = '0'): string {
+  return (
+    `<w:drawing><wp:anchor distT="0" distB="0" distL="114300" distR="114300" ` +
+    `simplePos="0" relativeHeight="251658240" behindDoc="${behindDoc}" ` +
+    `locked="0" layoutInCell="1" allowOverlap="1">` +
+    `<wp:simplePos x="0" y="0"/>` +
+    `<wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH>` +
+    `<wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>` +
+    `<wp:extent cx="457200" cy="457200"/>` +
+    `<wp:effectExtent l="0" t="0" r="0" b="0"/>` +
+    wrap +
+    `<wp:docPr id="10" name="浮動図" descr="回り込みの確認"/>` +
+    `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">` +
+    `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+    `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+    `<pic:nvPicPr><pic:cNvPr id="0" name="sample.png"/><pic:cNvPicPr/></pic:nvPicPr>` +
+    `<pic:blipFill><a:blip r:embed="rId100"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+    `</pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing>`
   )
 }
 

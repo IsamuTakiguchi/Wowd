@@ -238,7 +238,8 @@ describe('画像', () => {
     }
     doc.content.forEach(walk)
 
-    expect(images).toHaveLength(1)
+    // 行内 1 枚 + 浮動 5 枚
+    expect(images).toHaveLength(6)
     const image = images[0] as {
       attrs: { mediaKey: string; cx: number; cy: number; inline: boolean; descr: string }
     }
@@ -527,5 +528,50 @@ describe('名前空間と settings.xml', () => {
     const settings = '<w:settings xmlns:w="x"><w:updateFields w:val="false"/><w:compat/></w:settings>'
     expect(ensureUpdateFields(settings)).toContain('<w:updateFields w:val="true"/>')
     expect(ensureUpdateFields(settings)).not.toContain('w:val="false"')
+  })
+})
+
+describe('浮動画像 (wp:anchor)', () => {
+  /** 12-image.docx に含まれる画像ノードを集める */
+  function imagesOf(name: string) {
+    const { doc } = readDocx(readFixture(name), name)
+    return doc.content.flatMap((b) =>
+      b.type === 'paragraph'
+        ? (b.content ?? []).filter((n) => n.type === 'image').map((n) => n as never)
+        : []
+    ) as { attrs: { inline: boolean; wrap: string; cx: number } }[]
+  }
+
+  it('回り込みの種類を読み分ける', () => {
+    // レターヘッドのロゴなどで普通に使われる。種類ごとに読み取りが変わる
+    const images = imagesOf('12-image.docx')
+    const floating = images.filter((i) => !i.attrs.inline)
+    expect(floating.map((i) => i.attrs.wrap)).toEqual([
+      'square',
+      'tight',
+      'topAndBottom',
+      // wrapNone は behindDoc で前面か背面かが決まる
+      'behind',
+      'inFront'
+    ])
+  })
+
+  it('行内画像と浮動画像を区別する', () => {
+    const images = imagesOf('12-image.docx')
+    expect(images.filter((i) => i.attrs.inline)).toHaveLength(1)
+    expect(images.filter((i) => !i.attrs.inline).length).toBeGreaterThan(0)
+  })
+
+  it('浮動画像も保存で失われない', () => {
+    const source = readFixture('12-image.docx')
+    const model = readDocx(source, '12-image.docx')
+    const saved = writeDocx(model, model.pkg)
+    const xml = strFromU8(unzipSync(saved)['word/document.xml'] as Uint8Array)
+
+    // 原文のまま書き戻すので、回り込みの指定がそのまま残る
+    expect(xml).toContain('<wp:anchor')
+    expect(xml).toContain('wp:wrapSquare')
+    expect(xml).toContain('wp:wrapTopAndBottom')
+    expect(imagesOf('12-image.docx')).toHaveLength(6)
   })
 })

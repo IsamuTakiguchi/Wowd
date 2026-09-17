@@ -31,7 +31,9 @@ jobs:
           key: ooxml-schema-ecma376-part4-5th
       - run: npm run schema:fetch
 
-      - run: npm test
+      # coverage は同じテストを走らせたうえで閾値も評価する。
+      # npm test だと vitest.config.ts の閾値が一度も見られない
+      - run: npm run coverage
 
       - run: npm run build
       # Electron の E2E には仮想ディスプレイが要る

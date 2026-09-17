@@ -76,9 +76,13 @@ Wowd は要素間に改行やインデントを入れない。
 
 ## 未検証の項目
 
-この開発環境には Microsoft Word も動作する LibreOffice も無い
-(`soffice` は存在するが、生成元のライブラリが吐いた無編集の .docx すら
-"source file could not be loaded" で読めないため、検証手段として使えない)。
+この開発環境には Microsoft Word が無い。
+
+LibreOffice 24.2 は入っているが**壊れている**。`.docx` どころか
+プレーンな `.txt` の変換すら `source file could not be loaded` で失敗する
+(`soffice --headless --convert-to pdf t.txt`)。Wowd の出力とは無関係の
+環境側の問題なので、独立した第 2 実装としては使えない。
+再調査の手間を省くためここに記録しておく。
 
 したがって現時点で確認できているのは以下まで:
 
