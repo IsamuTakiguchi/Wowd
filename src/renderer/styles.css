@@ -177,6 +177,23 @@ body {
   font-size: 11px;
 }
 
+.ribbon-input {
+  height: 22px;
+  width: 150px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.ribbon-note {
+  color: var(--muted);
+  font-size: 10px;
+  max-width: 160px;
+  line-height: 1.3;
+}
+
 .ribbon-pending {
   font-size: 11px;
   color: var(--muted);
@@ -665,9 +682,9 @@ body {
 
 /* ── 変更履歴とコメント ── */
 
-/* 挿入された文字。著者ごとの色分けは校閲 UI と一緒に入れる */
+/* 挿入された文字。色は著者ごとにマーク側が --wowd-author で渡す */
 .wowd-ins {
-  color: #0b6bcb;
+  color: var(--wowd-author, #0b6bcb);
   text-decoration: underline;
 }
 
@@ -676,8 +693,54 @@ body {
  * 消してしまうと「元に戻す」で復元できない。
  */
 .wowd-del {
+  color: var(--wowd-author, #b3261e);
+  text-decoration: line-through;
+}
+
+/* 段落記号そのものの挿入・削除。行末に印を出す */
+.wowd-content p[data-para-revision]::after,
+.wowd-content h1[data-para-revision]::after,
+.wowd-content h2[data-para-revision]::after,
+.wowd-content h3[data-para-revision]::after,
+.wowd-content h4[data-para-revision]::after,
+.wowd-content h5[data-para-revision]::after,
+.wowd-content h6[data-para-revision]::after {
+  content: '\00b6';
+  margin-left: 0.15em;
+  font-size: 0.85em;
+  user-select: none;
+}
+
+.wowd-content [data-para-revision='ins']::after {
+  color: #0b6bcb;
+  text-decoration: underline;
+}
+
+.wowd-content [data-para-revision='del']::after {
   color: #b3261e;
   text-decoration: line-through;
+}
+
+/*
+ * 表示モード。
+ *  all      すべての変更を表示する
+ *  final    変更をすべて反映した姿 (削除は隠す)
+ *  original 変更前の姿 (挿入は隠す)
+ *
+ * 隠すのは表示だけで、文書からは消さない。
+ * 保存される内容は表示モードに左右されない。
+ */
+.wowd-viewport[data-revisions='final'] .wowd-del,
+.wowd-viewport[data-revisions='final'] [data-para-revision='del']::after,
+.wowd-viewport[data-revisions='original'] .wowd-ins,
+.wowd-viewport[data-revisions='original'] [data-para-revision='ins']::after {
+  display: none;
+}
+
+.wowd-viewport[data-revisions='final'] .wowd-ins,
+.wowd-viewport[data-revisions='original'] .wowd-del {
+  color: inherit;
+  text-decoration: none;
 }
 
 /* コメントが付いた範囲 */

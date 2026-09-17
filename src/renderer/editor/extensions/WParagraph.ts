@@ -19,6 +19,9 @@ export const WParagraph = Paragraph.extend({
       attrs['data-num-id'] = String(node.attrs['numPr'].numId)
       attrs['data-ilvl'] = String(node.attrs['numPr'].ilvl)
     }
+    // 段落記号そのものの挿入・削除。行末の ¶ を CSS で出すための印
+    const revision = node.attrs['paraMarkRevision'] as { kind: string } | null
+    if (revision) attrs['data-para-revision'] = revision.kind
     return ['p', attrs, 0]
   }
 })

@@ -91,6 +91,14 @@ export interface ParagraphAttrs {
   paraId: string | null
   /** 段落マークの書式 (w:pPr/w:rPr)。段落記号自体のフォントなど */
   markRunProps: RunProps | null
+  /**
+   * 段落記号そのものの挿入・削除 (w:pPr/w:rPr の w:ins / w:del)。
+   *
+   * 変更履歴を記録中に Enter を押すと段落記号が「挿入」され、
+   * BackSpace で段落をつなぐと「削除」される。ここを持たないと、
+   * 段落の分割と結合だけが履歴に残らず、元に戻せなくなる。
+   */
+  paraMarkRevision: { kind: 'ins' | 'del'; meta: RevisionMeta } | null
   /** 未対応の w:pPr 子要素を元の XML のまま退避する */
   rawPPr: string | null
   /** w:pPrChange (段落書式の変更履歴)。Phase 9 まで読み取り専用で往復させる */

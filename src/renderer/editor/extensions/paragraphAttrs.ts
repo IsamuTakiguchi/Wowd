@@ -22,6 +22,7 @@ export const DEFAULT_PARAGRAPH_ATTRS: ParagraphAttrs = {
   sectionId: null,
   paraId: null,
   markRunProps: null,
+  paraMarkRevision: null,
   rawPPr: null,
   pPrChange: null
 }
@@ -53,6 +54,14 @@ export function paragraphAttributeSpec() {
     // paraId は分割時に引き継ぐと Word 側で重複するので、新しい段落には引き継がない
     paraId: { default: null, parseHTML: () => null, renderHTML: () => ({}), keepOnSplit: false },
     markRunProps: passthrough<ParagraphAttrs['markRunProps']>(null),
+    // 段落記号の挿入・削除。分割で生まれた段落に引き継ぐと、
+    // 記録していない段落まで「挿入された」ことになるので引き継がない
+    paraMarkRevision: {
+      default: null,
+      parseHTML: () => null,
+      renderHTML: () => ({}),
+      keepOnSplit: false
+    },
     rawPPr: passthrough<string | null>(null),
     pPrChange: passthrough<ParagraphAttrs['pPrChange']>(null)
   }

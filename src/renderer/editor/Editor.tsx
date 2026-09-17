@@ -39,6 +39,9 @@ export function WowdEditor({
   const zoom = useUiStore((s) => s.zoom)
   const viewMode = useUiStore((s) => s.viewMode)
   const showGrid = useUiStore((s) => s.showGrid)
+  const tracking = useUiStore((s) => s.tracking)
+  const author = useUiStore((s) => s.author)
+  const revisionDisplay = useUiStore((s) => s.revisionDisplay)
   const setPageInfo = useUiStore((s) => s.setPageInfo)
 
   /** 文書差し替え中に onUpdate が走って dirty が立つのを防ぐ */
@@ -95,6 +98,23 @@ export function WowdEditor({
     // 何も変えないトランザクションで再計算のきっかけを作る
     editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false))
   }, [editor, resources, viewMode, handleLayout])
+
+  /**
+   * 変更履歴の設定をプラグインへ渡す。
+   *
+   * 記録の可否と著者名はプラグインが編集のたびに読むので、
+   * 拡張の storage に置く。書き換えはコマンド経由で行う
+   * (エディタから取り出した値を直接書き換えるのは避ける)。
+   */
+  useEffect(() => {
+    if (!editor) return
+    const commands = editor.commands as unknown as {
+      setTrackChanges: (on: boolean) => void
+      setRevisionAuthor: (name: string) => void
+    }
+    commands.setTrackChanges(tracking)
+    commands.setRevisionAuthor(author)
+  }, [editor, tracking, author])
 
   // 保存時に最新のツリーを引き出せるようにする
   useEffect(() => {
@@ -174,7 +194,7 @@ export function WowdEditor({
   const scale = snapScale(zoom / 100)
 
   return (
-    <div className="wowd-viewport" data-view-mode={viewMode}>
+    <div className="wowd-viewport" data-view-mode={viewMode} data-revisions={revisionDisplay}>
       {styleSheet && <style data-wowd-styles="">{styleSheet}</style>}
       {/* 変形後の実寸を外枠に持たせないとスクロール量が合わない */}
       <div

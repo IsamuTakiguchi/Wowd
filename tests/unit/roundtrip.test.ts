@@ -264,3 +264,31 @@ describe('画像', () => {
     )
   })
 })
+
+describe('変更履歴', () => {
+  it('段落記号の挿入・削除 (w:pPr/w:rPr の w:ins / w:del) を読む', () => {
+    const { doc } = readDocx(readFixture('10-revisions.docx'), '10-revisions.docx')
+    const revisions = doc.content
+      .filter((b) => b.type === 'paragraph')
+      .map((b) => (b.type === 'paragraph' ? b.attrs.paraMarkRevision : null))
+      .filter((r) => r != null)
+
+    expect(revisions).toHaveLength(2)
+    expect(revisions[0]).toMatchObject({ kind: 'ins', meta: { author: '校閲者A' } })
+    expect(revisions[1]).toMatchObject({ kind: 'del', meta: { author: '校閲者B' } })
+  })
+
+  it('段落記号の印が保存で失われず、二重にもならない', () => {
+    const source = readFixture('10-revisions.docx')
+    const model = readDocx(source, '10-revisions.docx')
+    const saved = writeDocx(model, model.pkg)
+    const xml = strFromU8(unzipSync(saved)['word/document.xml'] as Uint8Array)
+
+    // pPr の中に 1 つずつだけ入っていること
+    expect(xml.match(/<w:pPr><w:rPr><w:ins /g) ?? []).toHaveLength(1)
+    expect(xml.match(/<w:pPr><w:rPr><w:del /g) ?? []).toHaveLength(1)
+
+    const again = readDocx(saved, '10-revisions.docx')
+    expect(normalize(again.doc)).toEqual(normalize(model.doc))
+  })
+})

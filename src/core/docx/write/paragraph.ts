@@ -65,10 +65,27 @@ export function writeParagraphProps(
   if (attrs.jc) add('w:jc', valEl('w:jc', attrs.jc))
   if (attrs.outlineLvl != null) add('w:outlineLvl', valEl('w:outlineLvl', attrs.outlineLvl))
 
-  if (attrs.markRunProps) {
+  // 段落記号の書式と、段落記号そのものの挿入・削除。
+  // CT_ParaRPr では w:ins / w:del が rPr の先頭に来る (他の要素より前)
+  const rev = attrs.paraMarkRevision
+  if (attrs.markRunProps || rev) {
     const set = emptyMarkSet()
     set.props = attrs.markRunProps
-    add('w:rPr', writeRunProps(set))
+    const inner = writeRunProps(set)
+    const revEl = rev
+      ? el(rev.kind === 'ins' ? 'w:ins' : 'w:del', {
+          'w:id': rev.meta.id,
+          'w:author': rev.meta.author,
+          'w:date': rev.meta.date || undefined
+        })
+      : ''
+    // writeRunProps は w:rPr ごと返すので、開始タグの直後に差し込む
+    const merged = revEl
+      ? inner
+        ? inner.replace('<w:rPr>', `<w:rPr>${revEl}`)
+        : wrap('w:rPr', undefined, revEl)
+      : inner
+    add('w:rPr', merged)
   }
 
   if (attrs.sectionId) {

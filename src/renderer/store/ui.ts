@@ -15,6 +15,16 @@ export type ViewMode = 'print' | 'draft'
 /** 開いているモーダルダイアログ */
 export type DialogKind = 'ruby' | 'pageSetup' | null
 
+/**
+ * 変更履歴の表示モード。
+ *  all      すべての変更を表示
+ *  final    変更をすべて反映した姿 (削除を隠す)
+ *  original 変更前の姿 (挿入を隠す)
+ *
+ * 表示だけの切り替えで、文書の中身は変わらない。
+ */
+export type RevisionDisplay = 'all' | 'final' | 'original'
+
 export interface UiState {
   tab: RibbonTab
   zoom: number
@@ -29,6 +39,12 @@ export interface UiState {
   dialog: DialogKind
   /** コメントペインを開いているか */
   commentsOpen: boolean
+  /** 変更履歴を記録中か */
+  tracking: boolean
+  /** 変更履歴に残す著者名 */
+  author: string
+  /** 変更履歴の表示モード */
+  revisionDisplay: RevisionDisplay
 
   setTab: (tab: RibbonTab) => void
   setZoom: (zoom: number) => void
@@ -39,10 +55,34 @@ export interface UiState {
   setPageInfo: (current: number, count: number) => void
   openDialog: (kind: DialogKind) => void
   toggleComments: (open?: boolean) => void
+  setTracking: (on?: boolean) => void
+  setAuthor: (author: string) => void
+  setRevisionDisplay: (display: RevisionDisplay) => void
 }
 
 export const MIN_ZOOM = 50
 export const MAX_ZOOM = 300
+
+/** 既定の著者名。Word の「ユーザー名」に当たる */
+const DEFAULT_AUTHOR = '利用者'
+const AUTHOR_KEY = 'wowd.author'
+
+function loadAuthor(): string {
+  // 保存できない環境 (プライベートウィンドウなど) でも動くようにする
+  try {
+    return localStorage.getItem(AUTHOR_KEY) || DEFAULT_AUTHOR
+  } catch {
+    return DEFAULT_AUTHOR
+  }
+}
+
+function saveAuthor(author: string): void {
+  try {
+    localStorage.setItem(AUTHOR_KEY, author)
+  } catch {
+    // 保存できなくても編集は続けられる
+  }
+}
 
 export const useUiStore = create<UiState>((set) => ({
   tab: 'home',
@@ -54,6 +94,9 @@ export const useUiStore = create<UiState>((set) => ({
   pageCount: 1,
   dialog: null,
   commentsOpen: false,
+  tracking: false,
+  author: loadAuthor(),
+  revisionDisplay: 'all',
 
   setTab: (tab) => set({ tab }),
   setZoom: (zoom) => set({ zoom: clamp(zoom) }),
@@ -64,6 +107,12 @@ export const useUiStore = create<UiState>((set) => ({
   toggleGrid: (on) => set((s) => ({ showGrid: on ?? !s.showGrid })),
   openDialog: (dialog) => set({ dialog }),
   toggleComments: (open) => set((s) => ({ commentsOpen: open ?? !s.commentsOpen })),
+  setTracking: (on) => set((s) => ({ tracking: on ?? !s.tracking })),
+  setAuthor: (author) => {
+    saveAuthor(author)
+    set({ author })
+  },
+  setRevisionDisplay: (revisionDisplay) => set({ revisionDisplay }),
   setPageInfo: (currentPage, pageCount) =>
     set((s) =>
       s.currentPage === currentPage && s.pageCount === pageCount ? s : { currentPage, pageCount }

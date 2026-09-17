@@ -209,6 +209,24 @@ describe('スキーマの網羅性', () => {
     }
   })
 
+  it('段落記号の挿入・削除がエディタ経由でも失われない', () => {
+    // 段落記号はインラインの文字ではないので、マークではなく段落属性で表す。
+    // 落とすと Enter や BackSpace だけが履歴に残らなくなる
+    const meta = { id: 7, author: '校閲者', date: '2026-01-01T00:00:00Z' }
+    const doc = docOf({
+      type: 'paragraph',
+      attrs: { ...EMPTY_PARAGRAPH_ATTRS, paraMarkRevision: { kind: 'ins' as const, meta } },
+      content: [{ type: 'text', text: '段落' }]
+    })
+    const { restored, error } = throughEditor(doc)
+    expect(error).toBeNull()
+    const first = restored.content[0]
+    expect(first?.type).toBe('paragraph')
+    if (first?.type === 'paragraph') {
+      expect(first.attrs.paraMarkRevision).toEqual({ kind: 'ins', meta })
+    }
+  })
+
   it('複数のマークが同時に載っても失われない', () => {
     const doc = docOf(
       para({

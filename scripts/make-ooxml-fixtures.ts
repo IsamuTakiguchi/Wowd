@@ -191,8 +191,25 @@ function revisionsDoc(): string {
       '</w:delText>'
     )
 
+  // 段落記号そのものの挿入と削除 (w:pPr/w:rPr の w:ins / w:del)。
+  // Enter や BackSpace を記録中に押したときに Word が書く形
+  const paraInserted =
+    `<w:p><w:pPr><w:rPr>` +
+    `<w:ins w:id="103" w:author="校閲者A" w:date="2026-01-03T00:00:00Z"/>` +
+    `<w:b/></w:rPr></w:pPr>` +
+    text('段落記号が挿入された段落。') +
+    `</w:p>`
+  const paraDeleted =
+    `<w:p><w:pPr><w:rPr>` +
+    `<w:del w:id="104" w:author="校閲者B" w:date="2026-01-04T00:00:00Z"/>` +
+    `</w:rPr></w:pPr>` +
+    text('段落記号が削除された段落。') +
+    `</w:p>`
+
   return (
     para(text('変更履歴つきの段落: '), ins, text(' と '), del, text('。')) +
+    paraInserted +
+    paraDeleted +
     `<w:p>` +
     `<w:commentRangeStart w:id="1"/>` +
     text('コメントが付いた範囲') +

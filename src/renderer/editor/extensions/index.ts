@@ -16,6 +16,7 @@ import { WTab } from './WTab'
 import { PageBreak, SectionBreak } from './PageBreak'
 import { Numbering } from './Numbering'
 import { Shortcuts } from './Shortcuts'
+import { TrackChanges } from '../track/TrackChanges'
 import { Ruby, Field, Bookmark, WBreak } from './InlineNodes'
 import { WImage } from './WImage'
 import { WTable, WTableRow, WTableCell, WTableHeader } from './WTable'
@@ -77,6 +78,7 @@ export function buildExtensions(): (Extension | Node | Mark)[] {
     Numbering,
     // Tab は Numbering と WTab が先に処理するので、その後ろに置く
     Shortcuts,
+    TrackChanges,
 
     UndoRedo.configure({ depth: 200, newGroupDelay: 400 }),
     Gapcursor,

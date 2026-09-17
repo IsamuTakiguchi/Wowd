@@ -19,7 +19,13 @@ import {
   findChild,
   serializeChildren
 } from '../xml'
-import { readRun, readRunProps, readRevisionMeta, readRuby, type RunContext } from './run'
+import {
+  readRun,
+  readRevisionMeta,
+  readRuby,
+  EMPTY_RUN_PROPS,
+  type RunContext
+} from './run'
 
 export const EMPTY_PARAGRAPH_ATTRS: ParagraphAttrs = {
   pStyle: null,
@@ -35,6 +41,7 @@ export const EMPTY_PARAGRAPH_ATTRS: ParagraphAttrs = {
   sectionId: null,
   paraId: null,
   markRunProps: null,
+  paraMarkRevision: null,
   rawPPr: null,
   pPrChange: null
 }
@@ -158,12 +165,24 @@ export function readParagraphProps(pPr: XNode | undefined): ReadParagraphResult 
         sectPr = child
         break
       case 'w:rPr': {
-        const parsed = readRunProps(child)
-        // 段落記号自体の書式。太字などのフラグも含めて保持する
-        attrs.markRunProps = {
-          ...parsed.props,
-          rawRPr: parsed.props.rawRPr ?? serializeChildren(childrenOf(child)) ?? null
+        // 段落記号そのものの挿入・削除。rawRPr に紛れ込ませると
+        // 承諾や取り消しの対象にできないので、先に取り分ける
+        const rest: XNode[] = []
+        for (const node of childrenOf(child)) {
+          const name = tagOf(node)
+          if (name === 'w:ins' || name === 'w:del') {
+            attrs.paraMarkRevision = {
+              kind: name === 'w:ins' ? 'ins' : 'del',
+              meta: readRevisionMeta(node)
+            }
+            continue
+          }
+          rest.push(node)
         }
+        // 段落記号自体の書式は解釈せず、そのまま退避する。
+        // 画面にも保存内容にも効かない飾りなので、モデル化する意味が無い。
+        // (モデル化した項目と raw の両方に入れると二重に書き出されてしまう)
+        attrs.markRunProps = { ...EMPTY_RUN_PROPS, rawRPr: serializeChildren(rest) }
         break
       }
       case 'w:pPrChange':

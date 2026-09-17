@@ -356,11 +356,123 @@ export function ReviewTab({ editor }: { editor: Editor | null }): React.JSX.Elem
           </span>
         </RibbonRow>
       </RibbonGroup>
-      <PendingGroup
-        label="変更履歴"
-        items={['変更履歴の記録', '承諾 / 元に戻す', '変更箇所の表示切り替え']}
-      />
+      <RevisionGroups editor={editor} />
     </div>
+  )
+}
+
+/** 変更履歴のリボン。記録・承諾/取り消し・移動・表示モード */
+function RevisionGroups({ editor }: { editor: Editor | null }): React.JSX.Element {
+  const tracking = useUiStore((s) => s.tracking)
+  const setTracking = useUiStore((s) => s.setTracking)
+  const author = useUiStore((s) => s.author)
+  const setAuthor = useUiStore((s) => s.setAuthor)
+  const display = useUiStore((s) => s.revisionDisplay)
+  const setDisplay = useUiStore((s) => s.setRevisionDisplay)
+
+  /**
+   * コマンドは型が緩いので、使う分だけ形を付けて呼ぶ。
+   *
+   * chain().focus() は挟まない。focus() は呼ばれた時点の選択を復元するので、
+   * 変更箇所へ移動しても元の位置に引き戻されてしまう。
+   * ボタンは押下時に既定動作を止めており、本文のフォーカスは奪われない。
+   */
+  const run = (name: string, arg: unknown) => (): void => {
+    if (!editor) return
+    const commands = editor.commands as unknown as Record<string, (a: unknown) => boolean>
+    commands[name]?.(arg)
+  }
+
+  return (
+    <>
+      <RibbonGroup label="変更履歴">
+        <RibbonRow>
+          <RibbonButton
+            label="変更履歴の記録"
+            title="変更履歴の記録を開始または終了する"
+            wide
+            active={tracking}
+            disabled={!editor}
+            onClick={() => setTracking()}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <input
+            className="ribbon-input"
+            type="text"
+            title="変更履歴に残す名前"
+            aria-label="変更履歴に残す名前"
+            data-testid="revision-author"
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
+      <RibbonGroup label="変更箇所">
+        <RibbonRow>
+          <RibbonButton
+            label="承諾"
+            title="カーソル位置または選択範囲の変更を反映する"
+            disabled={!editor}
+            onClick={run('applyRevisionAt', 'accept')}
+          />
+          <RibbonButton
+            label="元に戻す"
+            title="カーソル位置または選択範囲の変更を取り消す"
+            disabled={!editor}
+            onClick={run('applyRevisionAt', 'reject')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="すべて承諾"
+            title="文書中のすべての変更を反映する"
+            disabled={!editor}
+            onClick={run('applyAllRevisions', 'accept')}
+          />
+          <RibbonButton
+            label="すべて元に戻す"
+            title="文書中のすべての変更を取り消す"
+            disabled={!editor}
+            onClick={run('applyAllRevisions', 'reject')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="◀ 前の変更"
+            title="前の変更箇所へ移動する"
+            disabled={!editor}
+            onClick={run('gotoRevision', -1)}
+          />
+          <RibbonButton
+            label="次の変更 ▶"
+            title="次の変更箇所へ移動する"
+            disabled={!editor}
+            onClick={run('gotoRevision', 1)}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
+      <RibbonGroup label="表示">
+        <RibbonRow>
+          <RibbonSelect
+            value={display}
+            title="変更履歴の表示方法"
+            width={150}
+            options={[
+              { value: 'all' as const, label: 'すべての変更' },
+              { value: 'final' as const, label: '変更なし (最終版)' },
+              { value: 'original' as const, label: '初版' }
+            ]}
+            onChange={setDisplay}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <span className="ribbon-note">表示だけの切り替えです。保存される内容は変わりません。</span>
+        </RibbonRow>
+      </RibbonGroup>
+    </>
   )
 }
 

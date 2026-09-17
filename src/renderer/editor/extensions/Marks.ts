@@ -1,5 +1,6 @@
 import { Mark, mergeAttributes } from '@tiptap/core'
 import type { RevisionMeta } from '@core/model/types'
+import { authorColor } from '@core/revisions/authorColor'
 
 /**
  * WowdDoc が生成しうるマークのうち、これまでスキーマに無かったもの。
@@ -116,6 +117,8 @@ export const InsertionMark = Mark.create({
       mergeAttributes(HTMLAttributes, {
         'data-wowd-ins': '',
         class: 'wowd-ins',
+        // 著者ごとの色。見た目は CSS 側でこの変数を使う
+        style: `--wowd-author:${authorColor(meta.author)}`,
         title: meta.author ? `${meta.author} が挿入` : undefined
       }),
       0
@@ -146,6 +149,7 @@ export const DeletionMark = Mark.create({
       mergeAttributes(HTMLAttributes, {
         'data-wowd-del': '',
         class: 'wowd-del',
+        style: `--wowd-author:${authorColor(meta.author)}`,
         title: meta.author ? `${meta.author} が削除` : undefined
       }),
       0
