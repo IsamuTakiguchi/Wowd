@@ -1,6 +1,7 @@
 import type { WowdDocument, WowdDoc, SectionProps } from '../../model/types'
 import { REL_TYPE, resolveRelTarget, relsPartNameFor, type DocxPackage } from '../package'
 import { XML_DECL, wrap } from '../xml'
+import { rootAttrsOf, applyRootAttrs, ensureIgnorable, ROOT_ATTR_PLACEHOLDER } from './rootAttrs'
 import { writeBlocks } from './body'
 
 /**
@@ -23,22 +24,27 @@ const HDR_FTR_ATTRS =
   'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" ' +
   'mc:Ignorable="w14"'
 
-const NS_MARK = '__ns=""'
-
 export const HEADER_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml'
 export const FOOTER_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml'
 
 /** w:hdr または w:ftr のパート本体を組み立てる */
-export function writeHeaderFooterXml(doc: WowdDoc, kind: 'header' | 'footer'): string {
+export function writeHeaderFooterXml(
+  doc: WowdDoc,
+  kind: 'header' | 'footer',
+  originalXml: string | null = null
+): string {
   const tag = kind === 'header' ? 'w:hdr' : 'w:ftr'
   // セクションは持たないので空の Map を渡す。ヘッダーの中に sectPr は来ない
   const body = writeBlocks(doc.content, new Map())
   // 空でも段落を 1 つ置く。Word は中身の無い w:hdr を嫌う
-  return XML_DECL + wrap(tag, { __ns: '' }, body || wrap('w:p', undefined, '')).replace(
-    NS_MARK,
-    HDR_FTR_ATTRS
+  return (
+    XML_DECL +
+    applyRootAttrs(
+      wrap(tag, ROOT_ATTR_PLACEHOLDER, body || wrap('w:p', undefined, '')),
+      ensureIgnorable(rootAttrsOf(originalXml, tag, HDR_FTR_ATTRS), ['w14'])
+    )
   )
 }
 
@@ -87,7 +93,11 @@ export function writeHeadersFooters(
     if (!content) continue
 
     const partName = resolveRelTarget(doc.resources.documentPartName, rel.target)
-    overrides.set(partName, writeHeaderFooterXml(content, kind))
+    const original = pkg.parts.get(partName)
+    overrides.set(
+      partName,
+      writeHeaderFooterXml(content, kind, original ? new TextDecoder().decode(original) : null)
+    )
   }
 }
 

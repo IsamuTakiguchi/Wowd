@@ -21,6 +21,8 @@
     "fixtures": "npm run templates && tsx scripts/make-fixtures.ts && tsx scripts/make-ooxml-fixtures.ts",
     "verify:roundtrip": "tsx scripts/verify-roundtrip.ts",
     "word-check": "tsx scripts/make-word-check.ts",
+    "schema:fetch": "tsx scripts/fetch-ooxml-schema.ts",
+    "schema:validate": "tsx scripts/validate-ooxml.ts",
     "e2e": "playwright test",
     "package": "npm run build && electron-builder"
   },

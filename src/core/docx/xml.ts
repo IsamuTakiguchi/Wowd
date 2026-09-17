@@ -8,7 +8,7 @@
  * 書き出しは自前の小さなエミッタを使う。xmlbuilder2 は名前空間の扱いが
  * WML の固定プレフィックスと噛み合わず、必要のない機能が大きすぎる。
  */
-import { XMLParser, XMLBuilder } from 'fast-xml-parser'
+import { XMLParser, XMLBuilder, XMLValidator } from 'fast-xml-parser'
 
 export const ATTR_PREFIX = '@_'
 export const TEXT_KEY = '#text'
@@ -50,6 +50,31 @@ const builder = new XMLBuilder({
 
 export function parseXml(xml: string): XNode[] {
   return parser.parse(xml) as XNode[]
+}
+
+/** 整形式でない XML を読んだときに投げる */
+export class XmlError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'XmlError'
+  }
+}
+
+/**
+ * 整形式であることを確かめる。
+ *
+ * パーサは寛容で、途中で切れた XML も閉じタグが合っていない XML も
+ * 例外を投げずに「読めたところまで」を返す。本文パートでそれが起きると
+ * **空の文書として開いてしまい、そのまま保存すれば原本が空で上書きされる**。
+ * 黙って壊すより、開く前に止める。
+ *
+ * 実ファイル 643 パート (フィクスチャ・テンプレート・生成物) で
+ * 誤検知が無いことを確認したうえで入れている。
+ */
+export function assertWellFormed(xml: string, partName: string): void {
+  const result = XMLValidator.validate(xml, { allowBooleanAttributes: true })
+  if (result === true) return
+  throw new XmlError(`${partName} が壊れています: ${result.err.msg}`)
 }
 
 /** preserveOrder のサブツリーを XML 文字列に戻す。raw 退避した断片の書き戻しに使う */

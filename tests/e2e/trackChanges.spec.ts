@@ -167,6 +167,9 @@ test('記録中に消した文字は消えずに削除として残る', async ()
 
 test('記録した変更が保存して開き直しても残る', async () => {
   await openFixture('01-plain.docx')
+  // 著者名は localStorage に残るので、既定値を当てにせず明示する
+  await openReviewTab()
+  await page.locator('[data-testid="revision-author"]').fill('保存テスト者')
   await setTracking(true)
   await caretAtStart()
   await page.keyboard.type('保存確認')
@@ -177,7 +180,7 @@ test('記録した変更が保存して開き直しても残る', async () => {
   const ins = page.locator('.wowd-content ins.wowd-ins')
   await expect(ins).toHaveCount(1)
   await expect(ins).toContainText('保存確認')
-  await expect(ins).toHaveAttribute('title', /利用者/)
+  await expect(ins).toHaveAttribute('title', /保存テスト者/)
 })
 
 test('すべて承諾すると赤入りが本文になる', async () => {

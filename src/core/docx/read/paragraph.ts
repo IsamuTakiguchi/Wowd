@@ -333,7 +333,11 @@ export function readInlineChildren(nodes: XNode[], out: InlineNode[], ctx: RunCo
       default:
         if (!KNOWN_P_CHILD.has(tag)) {
           ctx.unsupported.add(tag)
-          out.push({ type: 'rawRun', attrs: { xml: serializeChildren([child]) ?? '', label: tag } })
+          // w:p の直下から退避したものは既に完結しているので、書き戻しで包まない
+          out.push({
+            type: 'rawRun',
+            attrs: { xml: serializeChildren([child]) ?? '', label: tag, inRun: false }
+          })
         }
     }
   }

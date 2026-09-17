@@ -269,7 +269,7 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
         if (type === 'page') {
           // 段落内の改ページは独立ブロックに昇格できないので、ここでは改行として扱い、
           // 元の XML は rawRun で保持する
-          out.push({ type: 'rawRun', attrs: { xml: '', label: '改ページ' } })
+          out.push({ type: 'rawRun', attrs: { xml: '', label: '改ページ', inRun: true } })
         } else {
           out.push({
             type: 'wBreak',
@@ -299,7 +299,7 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
           ctx.unsupported.add('w:drawing')
           out.push({
             type: 'rawRun',
-            attrs: { xml: serializeChildren([child]) ?? '', label: 'w:drawing' }
+            attrs: { xml: serializeChildren([child]) ?? '', label: 'w:drawing', inRun: true }
           })
         }
         break
@@ -315,7 +315,10 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
       default:
         if (!KNOWN_RUN_CHILD.has(tag)) {
           ctx.unsupported.add(tag)
-          out.push({ type: 'rawRun', attrs: { xml: serializeChildren([child]) ?? '', label: tag } })
+          out.push({
+            type: 'rawRun',
+            attrs: { xml: serializeChildren([child]) ?? '', label: tag, inRun: true }
+          })
         }
     }
   }

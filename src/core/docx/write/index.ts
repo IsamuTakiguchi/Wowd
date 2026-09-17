@@ -14,6 +14,7 @@ import { XML_DECL, wrap } from '../xml'
 import { writeBody } from './body'
 import { writeNumbering } from './numbering'
 import { writeComments, writeCommentsExtended } from './comments'
+import { ensureIgnorable } from './rootAttrs'
 import {
   writeHeadersFooters,
   HEADER_CONTENT_TYPE,
@@ -45,8 +46,10 @@ export function documentRootAttrs(originalXml: string | null): string {
 export function writeDocumentXml(doc: WowdDocument, originalXml: string | null): string {
   const sections = new Map<string, SectionProps>(doc.resources.sections.map((s) => [s.id, s]))
   const body = writeBody(doc.doc, sections, doc.resources.trailingSectionId)
+  // 段落に w14:paraId を書くので、宣言と mc:Ignorable を揃える
+  const attrs = ensureIgnorable(documentRootAttrs(originalXml), ['w14'])
   // 属性は生文字列として差し込む必要があるため、いったん目印を入れて置換する
-  return XML_DECL + wrap('w:document', { __attrs: '' }, body).replace('__attrs=""', documentRootAttrs(originalXml))
+  return XML_DECL + wrap('w:document', { __attrs: '' }, body).replace('__attrs=""', attrs)
 }
 
 export interface WriteOptions {
@@ -85,12 +88,24 @@ export function writeDocx(
 
   if (options.numberingChanged) {
     const numberingPart = findNumberingPart(pkg)
-    if (numberingPart) overrides.set(numberingPart, writeNumbering(doc.resources.numbering))
+    if (numberingPart) {
+      // 原本のルート属性を引き継ぐ。落とすと、原文のまま書き戻した
+      // w15:tentative などの接頭辞が未宣言になり、Word が開けなくなる
+      overrides.set(
+        numberingPart,
+        writeNumbering(doc.resources.numbering, decodePart(pkg, numberingPart))
+      )
+    }
   }
 
   if (options.commentsChanged) {
     const commentsPart = findPart(pkg, 'comments.xml')
-    if (commentsPart) overrides.set(commentsPart, writeComments(doc.resources.comments))
+    if (commentsPart) {
+      overrides.set(
+        commentsPart,
+        writeComments(doc.resources.comments, decodePart(pkg, commentsPart))
+      )
+    }
     writeExtendedComments(doc, pkg, overrides)
   }
 
@@ -221,7 +236,10 @@ function writeExtendedComments(
 ): void {
   const existing = findPart(pkg, 'commentsExtended.xml')
   const partName = existing ?? EXTENDED_PART
-  overrides.set(partName, writeCommentsExtended(doc.resources.comments))
+  overrides.set(
+    partName,
+    writeCommentsExtended(doc.resources.comments, existing ? decodePart(pkg, existing) : null)
+  )
   if (existing) return
 
   // 新規に作る場合は関係とコンテンツタイプも足す

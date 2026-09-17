@@ -91,6 +91,9 @@ Wowd は要素間に改行やインデントを入れない。
 - 変更履歴の不変条件 (すべて承諾 = 記録しない場合 / すべて取り消し = 編集前)
 - 画面のページ数と PDF のページ数の一致
 - WML の子要素順序が順序テーブルどおりであること (`tests/unit/order.test.ts`)
+- ECMA-376 の公式 XSD に当てて規格違反が無いこと (`tests/unit/schemaValidation.test.ts`)
+- パッケージ全体の参照グラフが閉じていること (`tests/unit/packageIntegrity.test.ts`)
+- 壊れた / 悪意のある .docx で落ちないこと (`tests/unit/hostileInput.test.ts`)
 
 **実機 Word での確認は未実施。** 手順とチェックリストは
 `docs/word-verification.md` にある。確認用ファイルは `npm run word-check` で生成する。
@@ -102,6 +105,23 @@ Wowd は要素間に改行やインデントを入れない。
    (段落記号の `w:ins` / `w:del` を含む)
 3. コメントのスレッドと解決状態が Word 側でも保たれること
    (`w14:paraId` による結び付け)
+
+### スキーマ検証について
+
+`npm run schema:fetch` で ECMA-376 5th edition **Part 4** の
+`OfficeOpenXML-XMLSchema-Transitional.zip` を取得する。
+Wowd が書くのは Transitional (`.../wordprocessingml/2006/main`) で、
+Part 1 に入っているのは Strict (`purl.oclc.org` 系) なので使えない。
+
+検証の前に MCE (Markup Compatibility) の前処理をする。
+`mc:Ignorable` に挙がった接頭辞の要素と属性を落としてから当てる。
+`w14:paraId` のような Microsoft 拡張は ECMA-376 の XSD が知らないので、
+落とさずに当てると**正しいファイルが不合格になる**。
+
+契約は「違反ゼロ」ではなく **「保存して違反が増えないこと」**。
+Wowd は未対応の要素を原文のまま書き戻すので、元が規格外なら出力も規格外になる。
+それは忠実さであって不具合ではない。罰すると
+「規格に合わせるために中身を捨てる」方向に歪む。
 
 ### 順序違反という壊れ方について
 

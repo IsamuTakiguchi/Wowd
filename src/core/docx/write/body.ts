@@ -9,7 +9,15 @@ import type {
   WowdDoc
 } from '../../model/types'
 import { el, wrap, valEl, type AttrMap } from '../xml'
-import { TBLPR_ORDER, TCPR_ORDER, emitOrdered, splitFragments, type OrderedFragment } from './order'
+import {
+  TBLPR_ORDER,
+  TCPR_ORDER,
+  BORDER_SIDE_ORDER,
+  MARGIN_SIDE_ORDER,
+  emitOrdered,
+  splitFragments,
+  type OrderedFragment
+} from './order'
 import { writeParagraph } from './paragraph'
 import { writeSectionProps } from './section'
 
@@ -17,10 +25,18 @@ function widthAttrs(w: TableWidth | null): AttrMap {
   return w ? { 'w:w': w.value, 'w:type': w.type } : {}
 }
 
+/**
+ * 罫線を規定順で書く。
+ *
+ * オブジェクトのキー順のまま出してはいけない。CT_TblBorders は
+ * xsd:sequence なので、順序を誤ると Word が修復を出す。
+ * 実際キー順のまま出していて `top, bottom, left, ...` になっていた。
+ */
 function writeBorders(tag: string, borders: Borders | null): string {
   if (!borders) return ''
   let inner = ''
-  for (const [side, b] of Object.entries(borders)) {
+  for (const side of BORDER_SIDE_ORDER) {
+    const b = (borders as Record<string, Borders['top']>)[side]
     if (!b) continue
     inner += el(`w:${side}`, {
       'w:val': b.val,
@@ -32,10 +48,12 @@ function writeBorders(tag: string, borders: Borders | null): string {
   return inner ? wrap(tag, undefined, inner) : ''
 }
 
+/** セル余白も同じく sequence */
 function writeMargins(tag: string, margins: Margins | null): string {
   if (!margins) return ''
   let inner = ''
-  for (const [side, v] of Object.entries(margins)) {
+  for (const side of MARGIN_SIDE_ORDER) {
+    const v = (margins as Record<string, number | undefined>)[side]
     if (v == null) continue
     inner += el(`w:${side}`, { 'w:w': v, 'w:type': 'dxa' })
   }

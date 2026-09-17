@@ -266,7 +266,11 @@ function writeInlineOther(node: InlineNode): string {
         ? wrap('w:r', undefined, node.attrs.rawDrawing)
         : writeDrawing(node)
     case 'rawRun':
-      return node.attrs.xml
+      // w:r の中身として退避したものは包み直す。
+      // 包まないと w:fldChar などが w:p の直下に出て規格違反になる
+      return node.attrs.inRun && node.attrs.xml
+        ? wrap('w:r', undefined, node.attrs.xml)
+        : node.attrs.xml
     case 'text':
       return wrap('w:r', undefined, textEl('w:t', node.text))
     default:

@@ -284,7 +284,19 @@ export interface RawBlockNode {
 
 export interface RawRunNode {
   type: 'rawRun'
-  attrs: { xml: string; label: string }
+  attrs: {
+    xml: string
+    label: string
+    /**
+     * w:r の中身として退避したか。
+     *
+     * true なら書き戻すときに <w:r> で包み直す必要がある。
+     * 包み忘れると w:fldChar などが w:p の直下に出て、規格違反になる
+     * (複合フィールドを含む文書が保存で壊れる)。
+     * w:p の直下から退避したものは既に完結しているので包まない。
+     */
+    inRun: boolean
+  }
 }
 
 // ───────────────────────────── マーク ─────────────────────────────

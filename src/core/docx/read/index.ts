@@ -16,7 +16,17 @@ import {
   REL_TYPE,
   type DocxPackage
 } from '../package'
-import { parseXml, tagOf, attr, findChild, findChildren, intAttr, boolVal, type XNode } from '../xml'
+import {
+  parseXml,
+  assertWellFormed,
+  tagOf,
+  attr,
+  findChild,
+  findChildren,
+  intAttr,
+  boolVal,
+  type XNode
+} from '../xml'
 import { readBody } from './body'
 import { readStyles, emptyStyleTable } from './styles'
 import { readNumbering } from './numbering'
@@ -157,6 +167,10 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
 
   const documentXml = readPartText(pkg, pkg.documentPartName)
   if (!documentXml) throw new Error('本文パートを読めませんでした')
+  // パーサは壊れた XML でも「読めたところまで」を黙って返す。
+  // 本文でそれが起きると空の文書として開いてしまい、
+  // そのまま保存すれば原本が空で上書きされる。開く前に止める
+  assertWellFormed(documentXml, pkg.documentPartName)
 
   // 画像は関係 ID からメディアパートを引く。
   // rels は本文パートから相対で解決する

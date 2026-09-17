@@ -47,7 +47,9 @@ export const RawRun = Node.create({
   addAttributes() {
     return {
       xml: { default: '', parseHTML: () => '', renderHTML: () => ({}) },
-      label: { default: '', parseHTML: () => '', renderHTML: () => ({}) }
+      label: { default: '', parseHTML: () => '', renderHTML: () => ({}) },
+      // w:r の中身として退避したか。書き戻しで <w:r> を付け直すかを決める
+      inRun: { default: false, parseHTML: () => false, renderHTML: () => ({}) }
     }
   },
 

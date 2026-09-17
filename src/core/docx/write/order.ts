@@ -153,6 +153,29 @@ export const TCPR_ORDER: string[] = [
   'w:hideMark'
 ]
 
+/**
+ * 罫線の辺の順序 (CT_TblBorders / CT_TcBorders)。
+ *
+ * これも xsd:sequence。オブジェクトのキー順のまま出していて
+ * `top, bottom, left, ...` になっており、規定違反だった。
+ * ECMA-376 のスキーマ検証で見つかった。
+ */
+export const BORDER_SIDE_ORDER: string[] = [
+  'top',
+  'start',
+  'left',
+  'bottom',
+  'end',
+  'right',
+  'insideH',
+  'insideV',
+  'tl2br',
+  'tr2bl'
+]
+
+/** セル余白の辺の順序 (CT_TblCellMar / CT_TcMar)。同じく sequence */
+export const MARGIN_SIDE_ORDER: string[] = ['top', 'start', 'left', 'bottom', 'end', 'right']
+
 export const LVL_ORDER: string[] = [
   'w:start',
   'w:numFmt',

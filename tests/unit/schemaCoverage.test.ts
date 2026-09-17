@@ -148,7 +148,9 @@ describe('スキーマの網羅性', () => {
     },
     {
       label: '未対応ランの退避',
-      doc: docOf(para({ type: 'rawRun', attrs: { xml: '<w:object/>', label: 'w:object' } })),
+      doc: docOf(
+        para({ type: 'rawRun', attrs: { xml: '<w:object/>', label: 'w:object', inRun: true } })
+      ),
       types: ['rawRun']
     },
     { label: 'タブ', doc: docOf(para({ type: 'wTab', attrs: {} })), types: ['wTab'] },

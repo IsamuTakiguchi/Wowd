@@ -18,6 +18,7 @@ import { unzipSync, strFromU8 } from 'fflate'
 import { readDocx } from '../src/core/docx/read'
 import { openPackage } from '../src/core/docx/package'
 import { validatePackage, errorsOnly, formatProblems } from '../src/core/docx/validate'
+import { validateDocx, schemaAvailable, xmllintAvailable } from './lib/validateOoxml'
 import { parseXml } from '../src/core/docx/xml'
 
 const OUT_DIR = join(process.cwd(), 'word-check')
@@ -350,6 +351,11 @@ function inspect(): number {
   console.log('\n生成物を検査します:')
   let failures = 0
 
+  const schemaReady = schemaAvailable() && xmllintAvailable()
+  if (!schemaReady) {
+    console.warn('  (XSD が無いのでスキーマ検証は省略。npm run schema:fetch で取得できます)')
+  }
+
   for (const name of readdirSync(OUT_DIR).sort()) {
     if (!name.endsWith('.docx')) continue
     const bytes = new Uint8Array(readFileSync(join(OUT_DIR, name)))
@@ -371,6 +377,16 @@ function inspect(): number {
       } catch {
         console.error(`  NG  ${name}: ${part} が整形式でない`)
         failures++
+      }
+    }
+
+    // ECMA-376 の XSD に当てる。順序・必須属性・値の型を総当たりで見る
+    if (schemaReady) {
+      const problems = validateDocx(bytes, name)
+      if (problems.length > 0) {
+        console.error(`  NG  ${name}: 規格違反`)
+        for (const p of problems.slice(1)) console.error(`        ${p.message.slice(0, 200)}`)
+        failures += problems.length - 1
       }
     }
 
@@ -474,6 +490,14 @@ async function main(): Promise<void> {
     await headerFooter(page)
     await toc(page)
   } finally {
+    // 著者名は localStorage に残る。利用者の設定を書き換えたままにしない
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem('wowd.author')
+      } catch {
+        // 保存できない環境なら、そもそも残っていない
+      }
+    })
     await app.close()
   }
 

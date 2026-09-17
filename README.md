@@ -123,6 +123,8 @@ npm run lint
 npm run typecheck
 npm run verify:roundtrip -- <file.docx>   # 実ファイルのラウンドトリップを目視確認
 npm run word-check                        # 実機 Word での確認用ファイルを生成
+npm run schema:fetch                      # ECMA-376 の XSD を取得 (初回のみ)
+npm run schema:validate -- <file.docx>    # 公式スキーマに当てて検証
 ```
 
 ## 設計上の要点
@@ -212,6 +214,9 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
 1. 書き出したパッケージのパート一覧が元の上位集合であること
 2. 書き換えていないパートがバイト一致すること
 3. `read(write(read(f))) === read(f)` (冪等ラウンドトリップ)
+4. **ECMA-376 の公式 XSD に当てて規格違反が無いこと**
+5. **パッケージ全体の参照グラフが閉じていること**
+   (`r:id` の解決・Content_Types の被覆・コメント範囲の対応)
 
 加えて、**実際の利用経路 (開く → エディタ → 保存 → 開き直す) でも**検証している
 (`tests/unit/schemaCoverage.test.ts` と `tests/e2e/editorRoundtrip.spec.ts`)。
@@ -224,6 +229,23 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
   (表・画像・ルビ・フィールド・変更履歴・コメントで発生)
 - prosemirror-tables が「列数が合わない」と判断して勝手にセルを足し、
   開いて保存しただけで表の構造が変わる
+
+### 往復テストでは原理的に検出できない壊れ方
+
+**順序違反と名前空間の欠落は、往復テストを必ず素通りする。**
+読み直したモデルは、順序が違っても宣言が足りなくても同じに見えるため。
+しかし Word はどちらも開けない。
+
+実際に次を作り込んでいて、どれも往復テストは緑のままだった:
+
+- `sectPr` の子要素順に `w:headerReference` が無く、末尾へ回っていた
+- `w:tblBorders` の辺をオブジェクトのキー順のまま出していた
+- `w:drawing` が `wp:` を宣言していなかった
+- `numbering.xml` を書き直すと `w15:` の宣言だけが消えていた
+- 複合フィールド (`w:fldChar`) を `<w:r>` で包み直さず、`w:p` の直下に出していた
+
+前の 4 つは ECMA-376 の XSD 検証で、最後は同じ検証の「保存して違反が増えていないか」で
+見つかった。順序テーブルへの追加漏れは `emitOrdered` が例外を投げて止める。
 
 後者は OOXML と ProseMirror で表のモデルが違うことによる。OOXML は縦結合の
 継続セルを各行に明示するが、ProseMirror は開始セルの rowspan だけで表す。

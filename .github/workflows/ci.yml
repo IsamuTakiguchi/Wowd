@@ -22,6 +22,15 @@ jobs:
       # フィクスチャとテンプレートは生成物なのでコミットしていない
       - run: npm run fixtures
 
+      # ECMA-376 の XSD。スキップ任せにすると検証が静かに腐るので、
+      # CI では必ず取得してからテストする
+      - name: Cache OOXML schema
+        uses: actions/cache@v4
+        with:
+          path: schema/ooxml
+          key: ooxml-schema-ecma376-part4-5th
+      - run: npm run schema:fetch
+
       - run: npm test
 
       - run: npm run build

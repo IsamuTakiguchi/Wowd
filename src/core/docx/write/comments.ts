@@ -1,5 +1,6 @@
 import type { CommentRecord } from '../../model/types'
 import { wrap, el, XML_DECL } from '../xml'
+import { rootAttrsOf, applyRootAttrs, ensureIgnorable, ROOT_ATTR_PLACEHOLDER } from './rootAttrs'
 import { writeParagraph } from './paragraph'
 
 /**
@@ -22,10 +23,10 @@ const COMMENTS_EX_NS =
   'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" ' +
   'mc:Ignorable="w15"'
 
-/** ルート要素に生の名前空間文字列を差し込むための目印 */
-const NS_MARK = '__ns=""'
-
-export function writeComments(comments: Map<string, CommentRecord>): string {
+export function writeComments(
+  comments: Map<string, CommentRecord>,
+  originalXml: string | null = null
+): string {
   const body = [...comments.values()]
     .sort((a, b) => Number(a.id) - Number(b.id))
     .map((comment) =>
@@ -45,7 +46,14 @@ export function writeComments(comments: Map<string, CommentRecord>): string {
     )
     .join('')
 
-  return XML_DECL + wrap('w:comments', { __ns: '' }, body).replace(NS_MARK, COMMENTS_NS)
+  return (
+    XML_DECL +
+    applyRootAttrs(
+      wrap('w:comments', ROOT_ATTR_PLACEHOLDER, body),
+      // 段落に w14:paraId を書くので、宣言と mc:Ignorable を揃える
+      ensureIgnorable(rootAttrsOf(originalXml, 'w:comments', COMMENTS_NS), ['w14'])
+    )
+  )
 }
 
 /**
@@ -54,7 +62,10 @@ export function writeComments(comments: Map<string, CommentRecord>): string {
  * 各コメントの「末尾段落の paraId」を鍵にする。
  * 返信は親コメントの末尾段落 paraId を指す。
  */
-export function writeCommentsExtended(comments: Map<string, CommentRecord>): string {
+export function writeCommentsExtended(
+  comments: Map<string, CommentRecord>,
+  originalXml: string | null = null
+): string {
   const lastParaId = (comment: CommentRecord): string | null => {
     for (let i = comment.body.content.length - 1; i >= 0; i--) {
       const block = comment.body.content[i]
@@ -77,5 +88,11 @@ export function writeCommentsExtended(comments: Map<string, CommentRecord>): str
     })
     .join('')
 
-  return XML_DECL + wrap('w15:commentsEx', { __ns: '' }, body).replace(NS_MARK, COMMENTS_EX_NS)
+  return (
+    XML_DECL +
+    applyRootAttrs(
+      wrap('w15:commentsEx', ROOT_ATTR_PLACEHOLDER, body),
+      rootAttrsOf(originalXml, 'w15:commentsEx', COMMENTS_EX_NS)
+    )
+  )
 }
