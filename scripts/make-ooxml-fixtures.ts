@@ -203,6 +203,23 @@ function revisionsDoc(): string {
   )
 }
 
+/** 13: 目次の材料になる見出し構成 */
+function headingsDoc(): string {
+  const heading = (text: string, level: number): string =>
+    `<w:p><w:pPr><w:pStyle w:val="Heading${level}"/><w:outlineLvl w:val="${level - 1}"/></w:pPr>` +
+    `<w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`
+
+  return (
+    heading('第1章 総則', 1) +
+    para(text('第1章の本文です。')) +
+    heading('第1節 目的', 2) +
+    para(text('第1節の本文です。')) +
+    heading('第2章 実施', 1) +
+    para(text('第2章の本文です。')) +
+    SECT_A4
+  )
+}
+
 const IMAGE_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'
 
 /** 12: インライン画像 */
@@ -253,6 +270,7 @@ function main(): void {
   emit('09-fields.docx', 'blank-a4.docx', fieldsDoc())
   emit('10-revisions.docx', 'blank-a4.docx', revisionsDoc())
   emit('11-hostile.docx', 'blank-a4.docx', hostileDoc())
+  emit('13-headings.docx', 'blank-a4.docx', headingsDoc())
   emit('12-image.docx', 'blank-a4.docx', imageDoc(), {
     parts: new Map([['word/media/image1.png', new Uint8Array(readFileSync(SAMPLE_PNG))]]),
     rels: [{ id: 'rId100', type: IMAGE_REL, target: 'media/image1.png' }],

@@ -696,3 +696,13 @@ body {
 .wowd-ruby-base {
   ruby-align: center;
 }
+
+/*
+ * 結果が空のフィールド。何も出さないと幅ゼロになり、
+ * そこにフィールドがあること自体が分からなくなる
+ */
+.wowd-field:empty::before {
+  content: '⟨フィールド⟩';
+  color: var(--muted);
+  font-size: 0.85em;
+}

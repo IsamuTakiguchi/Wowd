@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { RibbonGroup, RibbonRow, RibbonButton, RibbonSelect } from './parts'
 import { useDocumentStore } from '../../store/document'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM } from '../../store/ui'
 import { gridFromSection, normalSizeOf } from '@core/layout/grid'
+import { insertTable, tableCommands, textWidthOf } from '../../editor/commands/table'
+import { insertOrUpdateToc } from '../../editor/commands/toc'
 import { twipToMm, mmToTwip } from '@shared/units'
 import type { SectionProps } from '@core/model/types'
 
@@ -24,6 +27,21 @@ function matchPaper(section: SectionProps): string {
 
 export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Element {
   const openDialog = useUiStore((s) => s.openDialog)
+  const document_ = useDocumentStore((s) => s.document)
+  const section = document_?.resources.sections[0] ?? null
+  const inTable = editor?.isActive('table') ?? false
+  const commands = editor ? tableCommands(editor) : null
+
+  const addTable = (rows: number, cols: number) => (): void => {
+    if (!editor || !section) return
+    insertTable(
+      editor,
+      rows,
+      cols,
+      textWidthOf(section.pgSz.w, section.pgMar.left + section.pgMar.gutter, section.pgMar.right)
+    )
+  }
+
   return (
     <div className="ribbon-tab-body">
       <RibbonGroup label="日本語">
@@ -48,9 +66,79 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
           />
         </RibbonRow>
       </RibbonGroup>
+      <RibbonGroup label="表">
+        <RibbonRow>
+          <RibbonButton
+            label="2 × 2"
+            title="2 行 2 列の表を挿入する"
+            disabled={!editor || !section}
+            onClick={addTable(2, 2)}
+          />
+          <RibbonButton
+            label="3 × 3"
+            title="3 行 3 列の表を挿入する"
+            disabled={!editor || !section}
+            onClick={addTable(3, 3)}
+          />
+          <RibbonButton
+            label="5 × 3"
+            title="5 行 3 列の表を挿入する"
+            disabled={!editor || !section}
+            onClick={addTable(5, 3)}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="行+"
+            title="下に行を追加する"
+            disabled={!inTable}
+            onClick={() => commands?.addRowAfter()}
+          />
+          <RibbonButton
+            label="行−"
+            title="行を削除する"
+            disabled={!inTable}
+            onClick={() => commands?.deleteRow()}
+          />
+          <RibbonButton
+            label="列+"
+            title="右に列を追加する"
+            disabled={!inTable}
+            onClick={() => commands?.addColumnAfter()}
+          />
+          <RibbonButton
+            label="列−"
+            title="列を削除する"
+            disabled={!inTable}
+            onClick={() => commands?.deleteColumn()}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="結合"
+            title="選択したセルを結合する"
+            disabled={!inTable}
+            onClick={() => commands?.mergeCells()}
+          />
+          <RibbonButton
+            label="分割"
+            title="結合したセルを分割する"
+            disabled={!inTable}
+            onClick={() => commands?.splitCell()}
+          />
+          <RibbonButton
+            label="表を削除"
+            title="表を削除する"
+            wide
+            disabled={!inTable}
+            onClick={() => commands?.deleteTable()}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
       <PendingGroup
-        label="表・画像・ヘッダー"
-        items={['表の挿入', '画像の挿入', 'ヘッダーとフッターの編集', 'ページ番号の挿入']}
+        label="画像・ヘッダー"
+        items={['画像の挿入', 'ヘッダーとフッターの編集', 'ページ番号の挿入']}
       />
     </div>
   )
@@ -211,10 +299,34 @@ export function ViewTab(): React.JSX.Element {
   )
 }
 
-export function ReferencesTab(): React.JSX.Element {
+export function ReferencesTab({ editor }: { editor: Editor | null }): React.JSX.Element {
+  const [status, setStatus] = useState<string | null>(null)
+
+  const build = (): void => {
+    if (!editor) return
+    const count = insertOrUpdateToc(editor)
+    setStatus(count > 0 ? `${count} 件の見出しから作成しました` : '見出しが見つかりません')
+  }
+
   return (
     <div className="ribbon-tab-body">
-      <PendingGroup label="目次" items={['目次の挿入', '目次の更新', '見出しへの移動']} />
+      <RibbonGroup label="目次">
+        <RibbonRow>
+          <RibbonButton
+            label="目次の挿入 / 更新"
+            title="見出しから目次を作る。すでにあれば作り直す"
+            wide
+            disabled={!editor}
+            onClick={build}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <span className="ribbon-readout" data-testid="toc-status">
+            {status ?? '見出し 1〜3 から作成します'}
+          </span>
+        </RibbonRow>
+      </RibbonGroup>
+      <PendingGroup label="参照" items={['図表番号', '相互参照', '脚注']} />
     </div>
   )
 }
