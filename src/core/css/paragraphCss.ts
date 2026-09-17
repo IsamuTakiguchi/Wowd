@@ -55,16 +55,33 @@ export function spacingToCss(spacing: ParagraphSpacing | null): Record<string, s
   return css
 }
 
-export function paragraphAttrsToStyle(attrs: Partial<ParagraphAttrs>): string {
+export interface ParagraphCssOptions {
+  /**
+   * break-before / break-after / break-inside を出すか。
+   *
+   * 画面では無害だが、印刷用に組んだ「1 ページ 1 div」の文書に混ざると、
+   * こちらが決めた改ページの上から Chromium が勝手に改ページしてしまう。
+   * 印刷側は false を渡す。
+   */
+  fragmentation?: boolean
+}
+
+export function paragraphAttrsToStyle(
+  attrs: Partial<ParagraphAttrs>,
+  options: ParagraphCssOptions = {}
+): string {
+  const { fragmentation = true } = options
   const css: Record<string, string> = {
     ...indentToCss(attrs.ind ?? null),
     ...spacingToCss(attrs.spacing ?? null)
   }
   if (attrs.jc && JC_TO_CSS[attrs.jc]) css['text-align'] = JC_TO_CSS[attrs.jc]!
   if (attrs.jc === 'distribute') css['text-align-last'] = 'justify'
-  if (attrs.keepNext) css['break-after'] = 'avoid'
-  if (attrs.keepLines) css['break-inside'] = 'avoid'
-  if (attrs.pageBreakBefore) css['break-before'] = 'page'
+  if (fragmentation) {
+    if (attrs.keepNext) css['break-after'] = 'avoid'
+    if (attrs.keepLines) css['break-inside'] = 'avoid'
+    if (attrs.pageBreakBefore) css['break-before'] = 'page'
+  }
 
   return Object.entries(css)
     .map(([k, v]) => `${k}:${v}`)

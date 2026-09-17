@@ -65,6 +65,12 @@ export async function buildMenu(): Promise<void> {
           click: () => send({ kind: 'file.saveAs' })
         },
         { type: 'separator' },
+        {
+          label: 'PDF として保存...',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => send({ kind: 'file.printPdf' })
+        },
+        { type: 'separator' },
         isMac ? { role: 'close', label: '閉じる' } : { role: 'quit', label: '終了' }
       ]
     },

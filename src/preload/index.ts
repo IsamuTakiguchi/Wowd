@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { IPC, type WowdApi, type MenuCommand, type TemplateId } from '../shared/ipc'
+import {
+  IPC,
+  type WowdApi,
+  type MenuCommand,
+  type TemplateId,
+  type PrintRequest
+} from '../shared/ipc'
 
 /**
  * ipcRenderer を参照してよい唯一のファイル。
@@ -20,6 +26,7 @@ const api: WowdApi = {
   showItemInFolder: (path: string) => ipcRenderer.invoke(IPC.showItemInFolder, path),
   confirmDiscard: (name: string) => ipcRenderer.invoke(IPC.confirmDiscard, name),
   reportError: (title: string, message: string) => ipcRenderer.invoke(IPC.reportError, title, message),
+  printToPdf: (request: PrintRequest) => ipcRenderer.invoke(IPC.printToPdf, request),
 
   onMenuCommand(cb: (cmd: MenuCommand) => void) {
     const listener = (_e: IpcRendererEvent, cmd: MenuCommand): void => cb(cmd)

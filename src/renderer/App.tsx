@@ -8,6 +8,7 @@ import { useDocumentStore } from './store/document'
 import { useUiStore } from './store/ui'
 import { t } from './i18n/ja'
 import type { MenuCommand } from '@shared/ipc'
+import { exportPdf, registerPrintSource } from './print/exportPdf'
 
 export function App(): React.JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -17,6 +18,11 @@ export function App(): React.JSX.Element {
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
 
   const onReady = useCallback((next: Editor | null) => setEditor(next), [])
+
+  // 印刷はメニューからも E2E からも叩けるよう、現在の対象を登録しておく
+  useEffect(() => {
+    registerPrintSource(editor, store.document, store.fileName())
+  }, [editor, store])
 
   // 起動時は空の A4 文書を開く
   useEffect(() => {
@@ -43,6 +49,22 @@ export function App(): React.JSX.Element {
         case 'file.saveAs':
           void state.saveAs()
           break
+        case 'file.printPdf': {
+          const doc = state.document
+          if (!editor || !doc) break
+          void exportPdf(editor, doc, state.fileName())
+            .then((result) => {
+              if (result.path) {
+                state.setError(null)
+              }
+            })
+            .catch((err: unknown) => {
+              state.setError(
+                `PDF を出力できませんでした: ${err instanceof Error ? err.message : String(err)}`
+              )
+            })
+          break
+        }
         case 'edit.undo':
           editor?.chain().focus().undo().run()
           break

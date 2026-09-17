@@ -1,9 +1,18 @@
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, protocol, session } from 'electron'
 import { createWindow, hardenNavigation } from './window'
 import { registerFileIpc } from './ipc/files'
 import { registerRecentIpc, setRecentChangeHandler } from './ipc/recent'
+import { registerPrintIpc } from './ipc/print'
 import { buildMenu } from './menu'
 import { IPC } from '../shared/ipc'
+
+// 印刷用の独自スキーム。app.whenReady の前に宣言する必要がある
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'wowd-print',
+    privileges: { standard: true, secure: true, supportFetchAPI: false, corsEnabled: false }
+  }
+])
 
 // 二重起動を禁止し、2 つ目の起動はファイルを開く要求として既存ウィンドウに転送する
 const gotLock = app.requestSingleInstanceLock()
@@ -53,6 +62,7 @@ if (!gotLock) {
     hardenNavigation()
     registerFileIpc()
     registerRecentIpc()
+    registerPrintIpc()
     setRecentChangeHandler(() => void buildMenu())
     await buildMenu()
 

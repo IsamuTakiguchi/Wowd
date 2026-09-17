@@ -4,8 +4,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { EditorState } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { NumberingTable, NumberingLevel, ParagraphIndent } from '@core/model/types'
-import { renderLevelText } from '@core/numbering/format'
-import { resolveLevel } from '@core/numbering/resolve'
+import { computeListMarkers } from '@core/numbering/markers'
 import { twipToPt } from '@shared/units'
 
 export const numberingPluginKey = new PluginKey<DecorationSet>('wowd-numbering')
@@ -30,43 +29,24 @@ interface NumberingStorage {
 function buildDecorations(doc: PMNode, table: NumberingTable | null): DecorationSet {
   if (!table || table.instances.size === 0) return DecorationSet.empty
 
-  const decorations: Decoration[] = []
-
-  /** numId ごとに、各レベルの現在のカウンタを保持する */
-  const counters = new Map<number, number[]>()
-  /** numId ごとに、直前に出現したレベル */
-  const lastLevel = new Map<number, number>()
-
+  // 記号の計算は core と共有する。画面と PDF で番号が食い違わないようにするため
+  const blocks: { numPr: { numId: number; ilvl: number } | null }[] = []
+  const positions: number[] = []
   doc.descendants((node, pos) => {
     if (!node.isBlock) return true
-    const numPr = node.attrs['numPr'] as { numId: number; ilvl: number } | null
-    if (!numPr) return true
+    if (node.type.name === 'table' || node.type.name === 'tableCell') return true
+    blocks.push({ numPr: (node.attrs['numPr'] as { numId: number; ilvl: number } | null) ?? null })
+    positions.push(pos)
+    return false
+  })
 
-    const { numId, ilvl } = numPr
-    const level = resolveLevel(table, numId, ilvl)
-    if (!level) return true
+  const markers = computeListMarkers(blocks, table)
+  const decorations: Decoration[] = []
 
-    let counter = counters.get(numId)
-    if (!counter) {
-      counter = new Array<number>(9).fill(0)
-      counters.set(numId, counter)
-    }
-
-    const prev = lastLevel.get(numId)
-    // より浅いレベルに戻ったら、それより深いレベルのカウンタをリセットする
-    if (prev != null && ilvl < prev) {
-      for (let i = ilvl + 1; i < counter.length; i++) counter[i] = 0
-    }
-    // このレベルが初出ならレベル定義の start から始める
-    if (counter[ilvl] === 0) counter[ilvl] = level.start - 1
-
-    counter[ilvl] = (counter[ilvl] ?? 0) + 1
-    lastLevel.set(numId, ilvl)
-
-    const marker = markerText(table, numId, level, counter)
-    if (marker === '') return true
-
-    const style = markerStyle(level)
+  for (const [index, marker] of markers) {
+    const pos = positions[index]
+    if (pos === undefined) continue
+    const style = markerStyle(marker.level)
     decorations.push(
       Decoration.widget(
         pos + 1,
@@ -74,34 +54,16 @@ function buildDecorations(doc: PMNode, table: NumberingTable | null): Decoration
           const span = document.createElement('span')
           span.className = 'wowd-list-marker'
           span.setAttribute('contenteditable', 'false')
-          span.textContent = marker + (level.suff === 'tab' ? '	' : level.suff === 'space' ? ' ' : '')
+          span.textContent = marker.text + marker.suffix
           if (style) span.setAttribute('style', style)
           return span
         },
         { side: -1, marks: [] }
       )
     )
-    return true
-  })
+  }
 
   return DecorationSet.create(doc, decorations)
-}
-
-function markerText(
-  table: NumberingTable,
-  numId: number,
-  level: NumberingLevel,
-  counter: number[]
-): string {
-  if (level.numFmt === 'none') return ''
-  if (level.numFmt === 'bullet') return level.lvlText
-
-  // %1〜%9 は各レベルの numFmt で整形する必要があるので、全レベルの書式を集める
-  const formats: string[] = []
-  for (let i = 0; i < 9; i++) {
-    formats.push(resolveLevel(table, numId, i)?.numFmt ?? 'decimal')
-  }
-  return renderLevelText(level.lvlText, counter, formats)
 }
 
 /**

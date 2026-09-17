@@ -16,6 +16,7 @@ export const IPC = {
   showItemInFolder: 'wowd:shell:showItem',
   confirmDiscard: 'wowd:dialog:confirmDiscard',
   reportError: 'wowd:dialog:error',
+  printToPdf: 'wowd:print:toPdf',
   // main → renderer (push)
   menuCommand: 'wowd:menu:command',
   openFileRequest: 'wowd:file:openRequest',
@@ -31,6 +32,24 @@ export interface RecentEntry {
   path: string
   name: string
   openedAt: number
+}
+
+export interface PrintRequest {
+  /** 完成した印刷用 HTML。外部参照を一切含まない自己完結した文書 */
+  html: string
+  /** 用紙。セクションごとに異なりうる */
+  papers: { widthMm: number; heightMm: number }[]
+  pageCount: number
+  /** 保存先。null なら main 側で保存ダイアログを出す */
+  targetPath: string | null
+  /** ダイアログの既定ファイル名 */
+  defaultName: string
+}
+
+export interface PrintResult {
+  /** 実際に保存した先。取り消された場合は null */
+  path: string | null
+  pageCount: number
 }
 
 export interface AppInfo {
@@ -52,6 +71,7 @@ export type MenuCommand =
   | { kind: 'file.openRecent'; path: string }
   | { kind: 'file.save' }
   | { kind: 'file.saveAs' }
+  | { kind: 'file.printPdf' }
   | { kind: 'edit.undo' }
   | { kind: 'edit.redo' }
   | { kind: 'edit.find' }
@@ -75,6 +95,7 @@ export interface WowdApi {
   /** 未保存の変更を破棄してよいか確認する。true = 破棄してよい */
   confirmDiscard(name: string): Promise<boolean>
   reportError(title: string, message: string): Promise<void>
+  printToPdf(request: PrintRequest): Promise<PrintResult>
 
   onMenuCommand(cb: (cmd: MenuCommand) => void): () => void
   onOpenFileRequest(cb: (path: string) => void): () => void
