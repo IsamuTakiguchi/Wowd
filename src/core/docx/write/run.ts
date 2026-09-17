@@ -258,7 +258,8 @@ function writeInlineOther(node: InlineNode): string {
     case 'ruby':
       return writeRuby(node)
     case 'image':
-      // Phase 7 まで画像は原文をそのまま書き戻す
+      // 原文を保持しているならそれを書き戻す。
+      // 回り込みや効果まで含めて完全に再現でき、情報が落ちない
       return node.attrs.rawDrawing ? wrap('w:r', undefined, node.attrs.rawDrawing) : ''
     case 'rawRun':
       return node.attrs.xml

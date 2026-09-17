@@ -12,6 +12,7 @@ import type { WowdResources, SectionProps } from '@core/model/types'
 import { defaultSection } from '@core/docx/read/section'
 import { pageGeometry, toPx } from '@core/layout/pageGeometry'
 import { gridFromSection, normalSizeOf, manuscriptCell } from '@core/layout/grid'
+import { mediaRegistry } from './media'
 import { PaginationExtension } from './pagination/PaginationExtension'
 import { PageChrome } from './pagination/PageChrome'
 import { PAGE_GAP, EMPTY_LAYOUT, type PageLayout } from './pagination/types'
@@ -72,6 +73,9 @@ export function WowdEditor({
     onReady(editor)
   }, [editor, onReady])
 
+  // 画面を閉じるときに blob URL を解放する
+  useEffect(() => () => mediaRegistry.clear(), [])
+
   /**
    * ページ分割の前提が変わったらプラグインに知らせる。
    *
@@ -111,6 +115,9 @@ export function WowdEditor({
     if (!loaded) return
     loading.current = true
     try {
+      // 画像を blob URL にしてから内容を差し替える。
+      // 逆順だと最初の描画で画像が出ない
+      mediaRegistry.load(loaded.resources)
       editor.commands.setContent(fromWowdDoc(loaded.doc) as never, { emitUpdate: false })
       // リストの行頭記号を描くために numbering.xml をプラグインへ渡す
       ;(editor.commands as unknown as { setNumberingTable: (t: unknown) => void }).setNumberingTable(

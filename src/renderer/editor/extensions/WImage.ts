@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { emuToPx } from '@shared/units'
+import { mediaRegistry } from '../media'
 
 /**
  * w:drawing — 画像。
@@ -39,14 +40,17 @@ export const WImage = Node.create({
     const width = emuToPx(Number(node.attrs['cx'] ?? 0))
     const height = emuToPx(Number(node.attrs['cy'] ?? 0))
     const mediaKey = String(node.attrs['mediaKey'] ?? '')
+    // 画像の中身は文書の中にバイト列で入っているので blob URL に変える
+    const src = mediaRegistry.get(mediaKey)
 
-    // 実際の画像は NodeView で blob URL を差し込む。
-    // ここでは大きさだけ確保して、レイアウトがずれないようにする
     return [
       'img',
       mergeAttributes(HTMLAttributes, {
         'data-wowd-image': mediaKey,
         class: 'wowd-image',
+        // 解決できない画像も枠だけ出す。消えるとレイアウトがずれて
+        // 「何かあったはず」ということすら分からなくなる
+        src: src ?? undefined,
         alt: String(node.attrs['descr'] ?? node.attrs['name'] ?? ''),
         width: width > 0 ? Math.round(width) : undefined,
         height: height > 0 ? Math.round(height) : undefined

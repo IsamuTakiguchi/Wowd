@@ -219,3 +219,48 @@ describe('ラウンドトリップ', () => {
     }
   })
 })
+
+describe('画像', () => {
+  it('w:drawing をモデル化して読む', () => {
+    const { doc, resources, unsupported } = readDocx(readFixture('12-image.docx'))
+    // raw 退避ではなくモデルとして読めていること
+    expect(unsupported).not.toContain('w:drawing')
+
+    const images: unknown[] = []
+    const walk = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return
+      const n = node as { type?: string; content?: unknown[] }
+      if (n.type === 'image') images.push(n)
+      if (Array.isArray(n.content)) n.content.forEach(walk)
+    }
+    doc.content.forEach(walk)
+
+    expect(images).toHaveLength(1)
+    const image = images[0] as {
+      attrs: { mediaKey: string; cx: number; cy: number; inline: boolean; descr: string }
+    }
+    expect(image.attrs.mediaKey).toBe('word/media/image1.png')
+    // 1 インチ角 = 914400 EMU
+    expect(image.attrs.cx).toBe(914400)
+    expect(image.attrs.cy).toBe(914400)
+    expect(image.attrs.inline).toBe(true)
+    expect(image.attrs.descr).toBe('青い四角')
+
+    // メディアの中身も読めていること
+    const media = resources.media.get('word/media/image1.png')
+    expect(media, 'メディアパートが読めていない').toBeDefined()
+    expect(media!.contentType).toBe('image/png')
+    expect(media!.bytes.length).toBeGreaterThan(0)
+  })
+
+  it('画像の入ったパートが保存で失われない', () => {
+    const doc = readDocx(readFixture('12-image.docx'))
+    const saved = writeDocx(doc, doc.pkg)
+    const after = readDocx(saved)
+    const media = after.resources.media.get('word/media/image1.png')
+    expect(media, '画像パートが失われた').toBeDefined()
+    expect(Array.from(media!.bytes)).toEqual(
+      Array.from(doc.resources.media.get('word/media/image1.png')!.bytes)
+    )
+  })
+})

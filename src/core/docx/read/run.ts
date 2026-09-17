@@ -7,6 +7,7 @@ import type {
   RevisionMeta,
   RubyNode
 } from '../../model/types'
+import { readDrawing } from './drawing'
 import {
   type XNode,
   tagOf,
@@ -202,6 +203,8 @@ export interface RunContext {
   commentIds: string[]
   /** 未対応要素のラベル収集先 */
   unsupported: Set<string>
+  /** 関係 ID からメディアパートの名前を引く。画像の解決に使う */
+  resolveMedia?: (relId: string) => string | null
 }
 
 /** モデル化済みの w:r 子要素 */
@@ -216,6 +219,7 @@ const KNOWN_RUN_CHILD = new Set([
   'w:cr',
   'w:ruby',
   'w:sym',
+  'w:drawing',
   // コメント参照は comment マークが id を持っているので、
   // ここでは読み捨てて書き出し側で作り直す。
   // raw として残すと、保存のたびに参照が 1 つずつ増える
@@ -286,6 +290,20 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
       case 'w:sym':
         pushText(symbolChar(child))
         break
+      case 'w:drawing': {
+        const image = ctx.resolveMedia ? readDrawing(child, ctx.resolveMedia) : null
+        if (image) {
+          out.push(image)
+        } else {
+          // グラフや SmartArt など画像でない図形。絵に潰さず原文のまま持つ
+          ctx.unsupported.add('w:drawing')
+          out.push({
+            type: 'rawRun',
+            attrs: { xml: serializeChildren([child]) ?? '', label: 'w:drawing' }
+          })
+        }
+        break
+      }
       case 'w:ruby': {
         // w:ruby は w:r の内側に入る (EG_RunInnerContent)。
         // 段落直下にあるものとして扱っていると、実際の Word 文書で

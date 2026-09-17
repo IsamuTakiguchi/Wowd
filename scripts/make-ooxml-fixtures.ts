@@ -10,10 +10,11 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { openPackage, savePackage } from '../src/core/docx/package'
+import { openPackage, savePackage, ensureDefaultContentType } from '../src/core/docx/package'
 
 const OUT_DIR = join(process.cwd(), 'tests', 'fixtures', 'docx')
 const TEMPLATE_DIR = join(process.cwd(), 'resources', 'templates')
+const SAMPLE_PNG = join(process.cwd(), 'tests', 'fixtures', 'sample.png')
 
 /** テンプレートの document.xml から名前空間宣言を借りる */
 function documentShell(body: string, templateXml: string): string {
@@ -21,13 +22,43 @@ function documentShell(body: string, templateXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<w:document${attrs}><w:body>${body}</w:body></w:document>`
 }
 
-function emit(name: string, template: string, body: string): void {
+interface ExtraParts {
+  /** 追加するパート。画像などのメディア */
+  parts?: Map<string, Uint8Array>
+  /** 本文の rels に足す関係 */
+  rels?: { id: string; type: string; target: string }[]
+  /** [Content_Types].xml に足す拡張子の既定 */
+  contentTypes?: { extension: string; contentType: string }[]
+}
+
+function emit(name: string, template: string, body: string, extra: ExtraParts = {}): void {
   const bytes = new Uint8Array(readFileSync(join(TEMPLATE_DIR, template)))
   const pkg = openPackage(bytes)
   const original = new TextDecoder().decode(pkg.parts.get(pkg.documentPartName)!)
-  const out = savePackage(pkg, {
-    overrides: new Map([[pkg.documentPartName, documentShell(body, original)]])
-  })
+  const overrides = new Map<string, Uint8Array | string | null>([
+    [pkg.documentPartName, documentShell(body, original)]
+  ])
+
+  for (const [part, data] of extra.parts ?? []) overrides.set(part, data)
+
+  if (extra.rels?.length) {
+    const relsPart = 'word/_rels/document.xml.rels'
+    const relsXml = new TextDecoder().decode(pkg.parts.get(relsPart)!)
+    const added = extra.rels
+      .map((r) => `<Relationship Id="${r.id}" Type="${r.type}" Target="${r.target}"/>`)
+      .join('')
+    overrides.set(relsPart, relsXml.replace('</Relationships>', `${added}</Relationships>`))
+  }
+
+  if (extra.contentTypes?.length) {
+    let types = new TextDecoder().decode(pkg.parts.get('[Content_Types].xml')!)
+    for (const ct of extra.contentTypes) {
+      types = ensureDefaultContentType(types, ct.extension, ct.contentType)
+    }
+    overrides.set('[Content_Types].xml', types)
+  }
+
+  const out = savePackage(pkg, { overrides })
   writeFileSync(join(OUT_DIR, name), out)
   console.log(`  ${name}  (${out.length} bytes)`)
 }
@@ -172,6 +203,32 @@ function revisionsDoc(): string {
   )
 }
 
+const IMAGE_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'
+
+/** 12: インライン画像 */
+function imageDoc(): string {
+  // 8x8 の画像を 1 インチ角 (914400 EMU) で置く
+  const drawing =
+    `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
+    `<wp:extent cx="914400" cy="914400"/>` +
+    `<wp:docPr id="1" name="図 1" descr="青い四角"/>` +
+    `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">` +
+    `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+    `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+    `<pic:nvPicPr><pic:cNvPr id="0" name="sample.png"/><pic:cNvPicPr/></pic:nvPicPr>` +
+    `<pic:blipFill><a:blip r:embed="rId100"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+    `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`
+
+  return (
+    para(text('次は画像です。')) +
+    para(`<w:r>${drawing}</w:r>`) +
+    para(text('画像の後の段落。')) +
+    SECT_A4
+  )
+}
+
 /** 11: 堅牢性の確認用。深い入れ子と大量の段落 */
 function hostileDoc(): string {
   const many = Array.from({ length: 400 }, (_, i) => para(text(`段落 ${i + 1}`))).join('')
@@ -196,6 +253,11 @@ function main(): void {
   emit('09-fields.docx', 'blank-a4.docx', fieldsDoc())
   emit('10-revisions.docx', 'blank-a4.docx', revisionsDoc())
   emit('11-hostile.docx', 'blank-a4.docx', hostileDoc())
+  emit('12-image.docx', 'blank-a4.docx', imageDoc(), {
+    parts: new Map([['word/media/image1.png', new Uint8Array(readFileSync(SAMPLE_PNG))]]),
+    rels: [{ id: 'rId100', type: IMAGE_REL, target: 'media/image1.png' }],
+    contentTypes: [{ extension: 'png', contentType: 'image/png' }]
+  })
   console.log('完了')
 }
 

@@ -154,7 +154,21 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
   const documentXml = readPartText(pkg, pkg.documentPartName)
   if (!documentXml) throw new Error('本文パートを読めませんでした')
 
-  const ctx: RunContext = { revision: null, commentIds: [], unsupported: new Set() }
+  // 画像は関係 ID からメディアパートを引く。
+  // rels は本文パートから相対で解決する
+  const resolveMedia = (relId: string): string | null => {
+    const rel = rels.byId.get(relId)
+    if (!rel || rel.type !== REL_TYPE.image || rel.targetMode === 'External') return null
+    const part = resolveRelTarget(pkg.documentPartName, rel.target)
+    return pkg.parts.has(part) ? part : null
+  }
+
+  const ctx: RunContext = {
+    revision: null,
+    commentIds: [],
+    unsupported: new Set(),
+    resolveMedia
+  }
 
   const root = parseXml(documentXml).find((n) => tagOf(n) === 'w:document')
   const body = findChild(root, 'w:body')
