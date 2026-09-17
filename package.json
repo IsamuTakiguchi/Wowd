@@ -20,6 +20,7 @@
     "templates": "tsx scripts/make-templates.ts",
     "fixtures": "npm run templates && tsx scripts/make-fixtures.ts && tsx scripts/make-ooxml-fixtures.ts",
     "verify:roundtrip": "tsx scripts/verify-roundtrip.ts",
+    "word-check": "tsx scripts/make-word-check.ts",
     "e2e": "playwright test",
     "package": "npm run build && electron-builder"
   },

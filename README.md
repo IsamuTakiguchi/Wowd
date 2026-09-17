@@ -122,6 +122,7 @@ npm run e2e                         # E2E (Linux では xvfb-run が必要)
 npm run lint
 npm run typecheck
 npm run verify:roundtrip -- <file.docx>   # 実ファイルのラウンドトリップを目視確認
+npm run word-check                        # 実機 Word での確認用ファイルを生成
 ```
 
 ## 設計上の要点
@@ -234,6 +235,11 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
 
 実際の Word で作った `.docx` を `tests/fixtures/docx/real-*.docx` として置けば、
 上記のテストが自動的に拾う。許容済みの差分は `docs/round-trip-report.md` にある。
+
+実機確認の手順とチェックリストは **`docs/word-verification.md`** にある。
+確認用ファイルは `npm run word-check` で生成でき、
+生成のあと「確認対象が実際に入っているか」まで自動で検査する
+(画面操作は静かに失敗しうるので、空振りしたファイルを渡さないため)。
 
 ## ライセンス
 

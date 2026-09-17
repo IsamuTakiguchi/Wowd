@@ -6,6 +6,7 @@ coverage/
 *.log
 .DS_Store
 node_modules/.tmp/
+word-check/
 test-results/
 playwright-report/
 tests/fixtures/docx/*.docx
