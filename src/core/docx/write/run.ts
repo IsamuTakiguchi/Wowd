@@ -118,7 +118,7 @@ export function writeRunProps(set: MarkSet): string {
 
   for (const frag of splitFragments(p?.rawRPr ?? null)) frags.push(frag)
 
-  const body = emitOrdered(RPR_ORDER, frags)
+  const body = emitOrdered(RPR_ORDER, frags, 'w:rPr')
   return body ? wrap('w:rPr', undefined, body) : ''
 }
 

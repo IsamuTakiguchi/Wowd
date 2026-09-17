@@ -53,7 +53,12 @@ class DocxClient {
   async save(
     document: WowdDocument,
     sourceBytes: Uint8Array,
-    options: { numberingChanged: boolean; commentsChanged: boolean; headersChanged: boolean }
+    options: {
+      numberingChanged: boolean
+      commentsChanged: boolean
+      headersChanged: boolean
+      tocChanged: boolean
+    }
   ): Promise<Uint8Array> {
     const res = await this.send({ kind: 'save', document, sourceBytes, ...options })
     if (res.kind !== 'save') throw new Error('予期しない応答です')

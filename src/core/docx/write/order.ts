@@ -91,6 +91,10 @@ export const RPR_ORDER: string[] = [
 ]
 
 export const SECTPR_ORDER: string[] = [
+  // CT_SectPr の sequence では参照が先頭に来る。
+  // 後ろに置くと、ヘッダーやフッターを持つ文書を Word が修復対象にする
+  'w:headerReference',
+  'w:footerReference',
   'w:footnotePr',
   'w:endnotePr',
   'w:type',
@@ -167,23 +171,53 @@ export const LVL_ORDER: string[] = [
 export interface OrderedFragment {
   tag: string
   xml: string
+  /**
+   * 元ファイルから原文のまま退避した断片か。
+   *
+   * raw は元の並び順のままなので、順序テーブルに載っていなくても構わない。
+   * モデルが組み立てた断片はそうはいかない (下の emitOrdered を参照)。
+   */
+  raw?: true
 }
 
 /**
  * 断片を規定順に並べて連結する。
- * order に現れないタグは末尾にまとめる (未知要素を落とさないため)。
+ *
+ * モデルが組み立てた断片のタグが順序テーブルに無ければ例外を投げる。
+ * 黙って末尾に回すと、要素の順序が ECMA-376 の sequence に反したまま
+ * 出力され、Word が「問題を修復しますか」を出す。しかもこの壊れ方は
+ * 往復テストでは絶対に検出できない (読み直したモデルは同じになるため)。
+ * 実際に w:headerReference がテーブルから漏れていて、
+ * ヘッダーを持つ全文書がこの状態になっていた。
+ *
+ * raw 断片だけは末尾に流す。元ファイル由来で順序も元のままであり、
+ * 未知の要素を落とさないことの方が大事なため。
  */
-export function emitOrdered(order: string[], fragments: OrderedFragment[]): string {
+export function emitOrdered(
+  order: string[],
+  fragments: OrderedFragment[],
+  label = '要素'
+): string {
   const rank = new Map(order.map((tag, i) => [tag, i]))
   const known: OrderedFragment[] = []
-  const unknown: OrderedFragment[] = []
+  const raw: OrderedFragment[] = []
   for (const f of fragments) {
     if (!f.xml) continue
-    if (rank.has(f.tag)) known.push(f)
-    else unknown.push(f)
+    if (rank.has(f.tag)) {
+      known.push(f)
+      continue
+    }
+    if (f.raw) {
+      raw.push(f)
+      continue
+    }
+    throw new Error(
+      `${label} の順序テーブルに ${f.tag} がありません。` +
+        'order.ts に規定順で追加してください (順序を誤ると Word が開けなくなります)'
+    )
   }
   known.sort((a, b) => (rank.get(a.tag) ?? 0) - (rank.get(b.tag) ?? 0))
-  return [...known, ...unknown].map((f) => f.xml).join('')
+  return [...known, ...raw].map((f) => f.xml).join('')
 }
 
 /**
@@ -205,7 +239,7 @@ export function splitFragments(xml: string | null): OrderedFragment[] {
     const tag = m[1]!
     const start = m.index
     if (m[2] === '/>') {
-      out.push({ tag, xml: xml.slice(start, re.lastIndex) })
+      out.push({ tag, xml: xml.slice(start, re.lastIndex), raw: true })
       continue
     }
     // 同名タグの入れ子に耐えるため、深さを数えて閉じタグを探す
@@ -224,7 +258,7 @@ export function splitFragments(xml: string | null): OrderedFragment[] {
       } else depth++
     }
     if (end === -1) break
-    out.push({ tag, xml: xml.slice(start, end) })
+    out.push({ tag, xml: xml.slice(start, end), raw: true })
     re.lastIndex = end
   }
   return out

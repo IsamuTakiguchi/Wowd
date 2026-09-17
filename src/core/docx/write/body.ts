@@ -56,7 +56,7 @@ function writeTable(table: TableNode, sections: Map<string, SectionProps>): stri
   add('w:tblCellMar', writeMargins('w:tblCellMar', table.attrs.cellMar))
   for (const frag of splitFragments(table.attrs.rawTblPr)) frags.push(frag)
 
-  const tblPr = wrap('w:tblPr', undefined, emitOrdered(TBLPR_ORDER, frags))
+  const tblPr = wrap('w:tblPr', undefined, emitOrdered(TBLPR_ORDER, frags, 'w:tblPr'))
   const tblGrid = wrap(
     'w:tblGrid',
     undefined,
@@ -105,7 +105,7 @@ function writeCell(cell: TableCellNode, sections: Map<string, SectionProps>): st
   if (cell.attrs.vAlign !== 'top') add('w:vAlign', valEl('w:vAlign', cell.attrs.vAlign))
   for (const frag of splitFragments(cell.attrs.rawTcPr)) frags.push(frag)
 
-  const tcPr = wrap('w:tcPr', undefined, emitOrdered(TCPR_ORDER, frags))
+  const tcPr = wrap('w:tcPr', undefined, emitOrdered(TCPR_ORDER, frags, 'w:tcPr'))
   const content = cell.content.map((b) => writeBlock(b, sections)).join('')
   // Word のセルは必ず段落で終わる必要がある
   const body = content || wrap('w:p', undefined, '')

@@ -8,10 +8,13 @@ import { el, wrap } from '../xml'
  * このアプリで挿入した画像だけ。回り込みも効果も持たない素の行内画像なので、
  * Word が必要とする最小限の骨格だけを作る。
  *
- * a: と pic: の名前空間はこの中で宣言する。元文書のルート宣言に
- * 含まれているとは限らず、欠けていると Word が開けなくなるため。
+ * 名前空間はすべてこの中で宣言する。documentRootAttrs は元文書の
+ * ルート宣言をそのまま使い回すので、図形を含んだことのない文書には
+ * wp: や a: の宣言が無いことがある。未宣言の接頭辞を含む XML は
+ * 整形式ですらないので、Word は開くことすらできない。
  */
 
+const WP_NS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'
 const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 const PIC_NS = 'http://schemas.openxmlformats.org/drawingml/2006/picture'
 
@@ -68,7 +71,7 @@ export function writeDrawing(node: ImageNode): string {
 
   const inline = wrap(
     'wp:inline',
-    { distT: 0, distB: 0, distL: 0, distR: 0 },
+    { 'xmlns:wp': WP_NS, distT: 0, distB: 0, distL: 0, distR: 0 },
     el('wp:extent', { cx, cy }) +
       el('wp:effectExtent', { l: 0, t: 0, r: 0, b: 0 }) +
       el('wp:docPr', {

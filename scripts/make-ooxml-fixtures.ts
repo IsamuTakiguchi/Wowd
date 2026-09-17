@@ -10,7 +10,12 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { openPackage, savePackage, ensureDefaultContentType } from '../src/core/docx/package'
+import {
+  openPackage,
+  savePackage,
+  ensureDefaultContentType,
+  ensureOverrideContentType
+} from '../src/core/docx/package'
 
 const OUT_DIR = join(process.cwd(), 'tests', 'fixtures', 'docx')
 const TEMPLATE_DIR = join(process.cwd(), 'resources', 'templates')
@@ -29,6 +34,8 @@ interface ExtraParts {
   rels?: { id: string; type: string; target: string }[]
   /** [Content_Types].xml に足す拡張子の既定 */
   contentTypes?: { extension: string; contentType: string }[]
+  /** [Content_Types].xml に足すパートごとの指定 (ヘッダーなど) */
+  overrideTypes?: { partName: string; contentType: string }[]
 }
 
 function emit(name: string, template: string, body: string, extra: ExtraParts = {}): void {
@@ -50,10 +57,13 @@ function emit(name: string, template: string, body: string, extra: ExtraParts = 
     overrides.set(relsPart, relsXml.replace('</Relationships>', `${added}</Relationships>`))
   }
 
-  if (extra.contentTypes?.length) {
+  if (extra.contentTypes?.length || extra.overrideTypes?.length) {
     let types = new TextDecoder().decode(pkg.parts.get('[Content_Types].xml')!)
-    for (const ct of extra.contentTypes) {
+    for (const ct of extra.contentTypes ?? []) {
       types = ensureDefaultContentType(types, ct.extension, ct.contentType)
+    }
+    for (const ct of extra.overrideTypes ?? []) {
+      types = ensureOverrideContentType(types, ct.partName, ct.contentType)
     }
     overrides.set('[Content_Types].xml', types)
   }
@@ -327,6 +337,68 @@ function hostileDoc(): string {
   return unknown + deepTable(6) + many + SECT_A4
 }
 
+const HEADER_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header'
+const FOOTER_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer'
+const HEADER_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml'
+const FOOTER_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml'
+
+const HDR_NS =
+  'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+  'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+
+function hdrPart(tag: 'w:hdr' | 'w:ftr', body: string): Uint8Array {
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n` +
+    `<${tag} ${HDR_NS}>${body}</${tag}>`
+  return new TextEncoder().encode(xml)
+}
+
+/**
+ * 15: ヘッダーとフッター。
+ *
+ * 先頭ページ別 (titlePg) と、フッターのページ番号フィールドを含む。
+ * ヘッダーを持つフィクスチャが 1 つも無かったため、
+ * w:headerReference の往復がこれまで一度も検証されていなかった。
+ */
+function headerFooterDoc(): { body: string; parts: Map<string, Uint8Array> } {
+  const sect =
+    `<w:sectPr>` +
+    `<w:headerReference w:type="default" r:id="rId101"/>` +
+    `<w:headerReference w:type="first" r:id="rId102"/>` +
+    `<w:footerReference w:type="default" r:id="rId103"/>` +
+    `<w:pgSz w:w="11906" w:h="16838"/>` +
+    `<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="851" w:footer="992" w:gutter="0"/>` +
+    `<w:titlePg/>` +
+    `</w:sectPr>`
+
+  const body =
+    Array.from({ length: 40 }, (_, i) =>
+      para(text(`第${i + 1}段落。ヘッダーとフッターを確認するための本文です。`))
+    ).join('') + sect
+
+  const pageNumber =
+    `<w:fldSimple w:instr=" PAGE  \\* MERGEFORMAT "><w:r><w:t>1</w:t></w:r></w:fldSimple>`
+
+  const parts = new Map<string, Uint8Array>([
+    [
+      'word/header1.xml',
+      hdrPart('w:hdr', `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>${text('社外秘')}</w:p>`)
+    ],
+    ['word/header2.xml', hdrPart('w:hdr', para(text('先頭ページ専用のヘッダー')))],
+    [
+      'word/footer1.xml',
+      hdrPart(
+        'w:ftr',
+        `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${text('- ')}${pageNumber}${text(' -')}</w:p>`
+      )
+    ]
+  ])
+
+  return { body, parts }
+}
+
 function main(): void {
   mkdirSync(OUT_DIR, { recursive: true })
   console.log('OOXML を直接書いたフィクスチャを生成します:')
@@ -349,6 +421,21 @@ function main(): void {
     parts: new Map([['word/media/image1.png', new Uint8Array(readFileSync(SAMPLE_PNG))]]),
     rels: [{ id: 'rId100', type: IMAGE_REL, target: 'media/image1.png' }],
     contentTypes: [{ extension: 'png', contentType: 'image/png' }]
+  })
+
+  const hf = headerFooterDoc()
+  emit('15-headers.docx', 'blank-a4.docx', hf.body, {
+    parts: hf.parts,
+    rels: [
+      { id: 'rId101', type: HEADER_REL, target: 'header1.xml' },
+      { id: 'rId102', type: HEADER_REL, target: 'header2.xml' },
+      { id: 'rId103', type: FOOTER_REL, target: 'footer1.xml' }
+    ],
+    overrideTypes: [
+      { partName: 'word/header1.xml', contentType: HEADER_TYPE },
+      { partName: 'word/header2.xml', contentType: HEADER_TYPE },
+      { partName: 'word/footer1.xml', contentType: FOOTER_TYPE }
+    ]
   })
   console.log('完了')
 }

@@ -350,9 +350,14 @@ export function ViewTab(): React.JSX.Element {
 export function ReferencesTab({ editor }: { editor: Editor | null }): React.JSX.Element {
   const [status, setStatus] = useState<string | null>(null)
 
+  const markTocChanged = useDocumentStore((s) => s.markTocChanged)
+
   const build = (): void => {
     if (!editor) return
     const count = insertOrUpdateToc(editor)
+    // settings.xml に w:updateFields を立てる印。
+    // 立てないと Word で開いてもページ番号が空欄のままになる
+    if (count > 0) markTocChanged()
     setStatus(count > 0 ? `${count} 件の見出しから作成しました` : '見出しが見つかりません')
   }
 

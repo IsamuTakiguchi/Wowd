@@ -16,6 +16,8 @@ export interface DocumentState {
   commentsChanged: boolean
   /** ヘッダー / フッターを編集したらそのパートも書き直す必要がある */
   headersChanged: boolean
+  /** 目次を作ったら settings.xml に w:updateFields を立てる必要がある */
+  tocChanged: boolean
   busy: boolean
   error: string | null
   /** 読み込み時に見つかった未対応要素。空でなければ画面に出す */
@@ -36,6 +38,8 @@ export interface DocumentState {
   fileName: () => string
   markDirty: () => void
   markNumberingChanged: () => void
+  /** 目次を作った印。Word 側でページ番号を計算し直させるために要る */
+  markTocChanged: () => void
   setError: (message: string | null) => void
   dismissUnsupported: () => void
   blockSaving: (reason: string) => void
@@ -85,6 +89,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   numberingChanged: false,
   commentsChanged: false,
   headersChanged: false,
+  tocChanged: false,
   busy: false,
   error: null,
   unsupported: [],
@@ -99,6 +104,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   markDirty: () => set({ dirty: true }),
   markNumberingChanged: () => set({ numberingChanged: true, dirty: true }),
+  markTocChanged: () => set({ tocChanged: true, dirty: true }),
   setError: (message) => set({ error: message }),
   blockSaving: (reason) => set({ saveBlockedReason: reason, error: reason }),
 
@@ -161,6 +167,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         numberingChanged: false,
         commentsChanged: false,
         headersChanged: false,
+        tocChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -184,6 +191,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         numberingChanged: false,
         commentsChanged: false,
         headersChanged: false,
+        tocChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
@@ -220,8 +228,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async saveToBytes() {
-    const { document, sourceBytes, numberingChanged, commentsChanged, headersChanged, saveBlockedReason } =
-      get()
+    const { document, sourceBytes, saveBlockedReason } = get()
+    const { numberingChanged, commentsChanged, headersChanged, tocChanged } = get()
     if (!document || !sourceBytes) return []
     // 表示に失敗している状態で保存するとエディタの中身 (前の文書) を
     // 書き出してしまう。writeTo と同じく止める
@@ -230,7 +238,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, {
       numberingChanged,
       commentsChanged,
-      headersChanged
+      headersChanged,
+      tocChanged
     })
     return Array.from(bytes)
   },
@@ -250,8 +259,8 @@ type Set = (partial: Partial<DocumentState>) => void
 let docProvider: (() => WowdDoc) | null = null
 
 async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
-  const { document, sourceBytes, numberingChanged, commentsChanged, headersChanged, saveBlockedReason } =
-      get()
+  const { document, sourceBytes, saveBlockedReason } = get()
+  const { numberingChanged, commentsChanged, headersChanged, tocChanged } = get()
   if (!document || !sourceBytes) return false
   if (saveBlockedReason) {
     set({ error: `保存を中止しました。${saveBlockedReason}` })
@@ -265,7 +274,8 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
     const bytes = await docxClient.save(toSave, sourceBytes, {
       numberingChanged,
       commentsChanged,
-      headersChanged
+      headersChanged,
+      tocChanged
     })
     await window.wowd.writeFile(path, bytes)
     await window.wowd.addRecent(path)
@@ -277,6 +287,7 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
       numberingChanged: false,
       commentsChanged: false,
       headersChanged: false,
+      tocChanged: false,
       sourceBytes: bytes
     })
     return true

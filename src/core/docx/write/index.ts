@@ -4,6 +4,7 @@ import {
   ensureOverrideContentType,
   ensureDefaultContentType,
   ensureRelationship,
+  ensureUpdateFields,
   relsPartNameFor,
   resolveRelTarget,
   REL_TYPE,
@@ -55,6 +56,14 @@ export interface WriteOptions {
   commentsChanged?: boolean
   /** ヘッダー / フッターのパートも書き直すか */
   headersChanged?: boolean
+  /**
+   * 目次を作った、または作り直したか。
+   *
+   * settings.xml に w:updateFields を立てて、Word 側でページ番号を
+   * 計算し直させる。目次を触っていないときに settings.xml を
+   * 書き換えないよう、明示的に指示されたときだけ立てる。
+   */
+  tocChanged?: boolean
 }
 
 /**
@@ -88,6 +97,14 @@ export function writeDocx(
   if (options.headersChanged) {
     writeHeadersFooters(doc, pkg, overrides)
     ensureHeaderFooterParts(doc, pkg, overrides)
+  }
+
+  if (options.tocChanged) {
+    const settingsPart = findPart(pkg, 'settings.xml')
+    const settingsXml = settingsPart ? decodePart(pkg, settingsPart) : null
+    if (settingsPart && settingsXml) {
+      overrides.set(settingsPart, ensureUpdateFields(settingsXml))
+    }
   }
 
   writeNewMedia(doc, pkg, overrides)

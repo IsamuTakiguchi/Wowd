@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { unzipSync, strFromU8 } from 'fflate'
 import { readDocx } from '@core/docx/read'
 import { writeDocx } from '@core/docx/write'
-import { openPackage } from '@core/docx/package'
+import { openPackage, ensureUpdateFields } from '@core/docx/package'
 import { fixtureNames, readFixture } from './helpers'
 import { fromEditableText, toEditableText } from '@core/headerFooter'
 import { readFileSync } from 'node:fs'
@@ -452,5 +452,80 @@ describe('ヘッダーとフッター', () => {
       if (!/header\d*\.xml$|footer\d*\.xml$/.test(name)) continue
       expect(after[name], `${name} が書き換わった`).toEqual(before[name])
     }
+  })
+})
+
+describe('名前空間と settings.xml', () => {
+  it('画像の w:drawing が名前空間を自前で宣言する', () => {
+    // documentRootAttrs は元文書のルート宣言を使い回すので、
+    // wp: や a: を宣言していない文書に画像を入れると
+    // 未宣言の接頭辞を含む XML になり、Word は開くことすらできない
+    const source = readFixture('01-plain.docx')
+    const model = readDocx(source, '01-plain.docx')
+    const bytes = new Uint8Array(readFileSync(join('tests', 'fixtures', 'sample.png')))
+    model.resources.media.set('word/media/image1.png', { bytes, contentType: 'image/png' })
+    const relId = `rId${model.resources.rels.nextId}`
+    model.resources.rels.byId.set(relId, {
+      id: relId,
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+      target: 'media/image1.png',
+      targetMode: null
+    })
+    const first = model.doc.content[0]
+    if (first?.type !== 'paragraph') throw new Error('先頭が段落でない')
+    first.content = [
+      {
+        type: 'image',
+        attrs: {
+          mediaKey: 'word/media/image1.png',
+          relId,
+          cx: 914400,
+          cy: 914400,
+          wrap: 'inline',
+          name: 'sample.png',
+          descr: '',
+          inline: true,
+          rawDrawing: null
+        }
+      }
+    ]
+
+    const xml = strFromU8(unzipSync(writeDocx(model, model.pkg))['word/document.xml'] as Uint8Array)
+    const drawing = /<w:drawing>[\s\S]*?<\/w:drawing>/.exec(xml)?.[0] ?? ''
+    expect(drawing).toContain('xmlns:wp=')
+    expect(drawing).toContain('xmlns:a=')
+    expect(drawing).toContain('xmlns:pic=')
+  })
+
+  it('目次を作ったときだけ settings.xml に w:updateFields を立てる', () => {
+    const source = readFixture('13-headings.docx')
+    const model = readDocx(source, '13-headings.docx')
+
+    // 触っていないときは元のままバイト一致
+    const untouched = unzipSync(writeDocx(model, model.pkg))['word/settings.xml']
+    expect(untouched).toEqual(unzipSync(source)['word/settings.xml'])
+
+    // 目次を作ったときだけ立てる
+    const withToc = strFromU8(
+      unzipSync(writeDocx(model, model.pkg, { tocChanged: true }))['word/settings.xml'] as Uint8Array
+    )
+    expect(withToc).toContain('<w:updateFields w:val="true"/>')
+  })
+
+  it('w:updateFields は CT_Settings の規定位置に入る', () => {
+    // settings.xml も sequence なので、末尾に足すだけでは規定違反になる
+    const settings =
+      '<w:settings xmlns:w="x"><w:defaultTabStop w:val="840"/><w:compat/><w:rsids/></w:settings>'
+    const out = ensureUpdateFields(settings)
+    expect(out).toBe(
+      '<w:settings xmlns:w="x"><w:defaultTabStop w:val="840"/>' +
+        '<w:updateFields w:val="true"/><w:compat/><w:rsids/></w:settings>'
+    )
+  })
+
+  it('既にある w:updateFields は true に差し替える', () => {
+    const settings = '<w:settings xmlns:w="x"><w:updateFields w:val="false"/><w:compat/></w:settings>'
+    expect(ensureUpdateFields(settings)).toContain('<w:updateFields w:val="true"/>')
+    expect(ensureUpdateFields(settings)).not.toContain('w:val="false"')
   })
 })

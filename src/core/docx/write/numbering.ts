@@ -32,7 +32,7 @@ export function writeLevel(level: NumberingLevel): string {
     add('w:rPr', writeRunProps(set))
   }
 
-  return wrap('w:lvl', { 'w:ilvl': level.ilvl }, emitOrdered(LVL_ORDER, frags))
+  return wrap('w:lvl', { 'w:ilvl': level.ilvl }, emitOrdered(LVL_ORDER, frags, 'w:lvl'))
 }
 
 /**

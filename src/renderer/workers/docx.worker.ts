@@ -29,6 +29,7 @@ export interface SaveRequest {
   numberingChanged: boolean
   commentsChanged: boolean
   headersChanged: boolean
+  tocChanged: boolean
 }
 
 export type WorkerRequest = OpenRequest | SaveRequest
@@ -60,7 +61,8 @@ function handle(req: WorkerRequest): WorkerResponse {
   const bytes = writeDocx(req.document, pkg, {
     numberingChanged: req.numberingChanged,
     commentsChanged: req.commentsChanged,
-    headersChanged: req.headersChanged
+    headersChanged: req.headersChanged,
+    tocChanged: req.tocChanged
   })
   return { kind: 'save', id: req.id, ok: true, bytes }
 }

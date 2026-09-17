@@ -106,7 +106,7 @@ export function writeParagraphProps(
 
   for (const frag of splitFragments(attrs.rawPPr)) frags.push(frag)
 
-  const body = emitOrdered(PPR_ORDER, frags)
+  const body = emitOrdered(PPR_ORDER, frags, 'w:pPr')
   return body ? wrap('w:pPr', undefined, body) : ''
 }
 

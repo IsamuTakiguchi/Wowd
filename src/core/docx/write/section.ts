@@ -69,5 +69,5 @@ export function writeSectionProps(section: SectionProps): string {
 
   for (const frag of splitFragments(section.rawSectPr)) frags.push(frag)
 
-  return wrap('w:sectPr', undefined, emitOrdered(SECTPR_ORDER, frags))
+  return wrap('w:sectPr', undefined, emitOrdered(SECTPR_ORDER, frags, 'w:sectPr'))
 }

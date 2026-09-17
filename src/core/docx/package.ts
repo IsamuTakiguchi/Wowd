@@ -239,6 +239,55 @@ export function ensureRelationship(
   return relsXml.replace('</Relationships>', `${entry}</Relationships>`)
 }
 
+/**
+ * CT_Settings の並びで w:updateFields より後ろに来る要素。
+ *
+ * settings.xml も xsd:sequence なので、末尾に足すだけでは規定違反になる。
+ * 最初に見つかった「後ろに来るはずの要素」の直前へ差し込む。
+ */
+const AFTER_UPDATE_FIELDS = [
+  'w:hdrShapeDefaults',
+  'w:footnotePr',
+  'w:endnotePr',
+  'w:compat',
+  'w:docVars',
+  'w:rsids',
+  'm:mathPr',
+  'w:attachedSchema',
+  'w:themeFontLang',
+  'w:clrSchemeMapping',
+  'w:doNotIncludeSubdocsInStats',
+  'w:doNotAutoCompressPictures',
+  'w:forceUpgrade',
+  'w:captions',
+  'w:readModeInkLockDown',
+  'w:smartTagType',
+  'sl:schemaLibrary',
+  'w:shapeDefaults',
+  'w:doNotEmbedSmartTags',
+  'w:decimalSymbol',
+  'w:listSeparator'
+]
+
+/**
+ * settings.xml に w:updateFields を立てる。
+ *
+ * 目次を作っても、これが無いと Word は開いたときにページ番号を計算し直さない
+ * (利用者が手で「目次の更新」を押すまで空欄のままになる)。
+ * 既にある場合は値を true に差し替える。
+ */
+export function ensureUpdateFields(settingsXml: string): string {
+  const entry = '<w:updateFields w:val="true"/>'
+  const existing = /<w:updateFields\b[^>]*\/>|<w:updateFields\b[^>]*>[\s\S]*?<\/w:updateFields>/
+  if (existing.test(settingsXml)) return settingsXml.replace(existing, entry)
+
+  for (const tag of AFTER_UPDATE_FIELDS) {
+    const at = settingsXml.indexOf(`<${tag}`)
+    if (at !== -1) return settingsXml.slice(0, at) + entry + settingsXml.slice(at)
+  }
+  return settingsXml.replace('</w:settings>', `${entry}</w:settings>`)
+}
+
 export function ensureDefaultContentType(
   contentTypesXml: string,
   extension: string,
