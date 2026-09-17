@@ -1,0 +1,21 @@
+appId: dev.wowd.app
+productName: Wowd
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - resources/templates/**
+  - package.json
+win:
+  target: nsis
+mac:
+  target: dmg
+  category: public.app-category.productivity
+linux:
+  target: [AppImage, deb]
+  category: Office
+fileAssociations:
+  - ext: docx
+    name: Word 文書
+    role: Editor

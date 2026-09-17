@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+*.log
+.DS_Store
+node_modules/.tmp/
+test-results/
+playwright-report/
+tests/fixtures/docx/*.docx
+!tests/fixtures/docx/.gitkeep
