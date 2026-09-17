@@ -5,8 +5,7 @@ import type {
   ParagraphSpacing,
   InlineNode,
   Justification,
-  LineRule,
-  RubyNode
+  LineRule
 } from '../../model/types'
 import {
   type XNode,
@@ -20,7 +19,7 @@ import {
   findChild,
   serializeChildren
 } from '../xml'
-import { readRun, readRunProps, readRevisionMeta, type RunContext, EMPTY_RUN_PROPS } from './run'
+import { readRun, readRunProps, readRevisionMeta, readRuby, type RunContext } from './run'
 
 export const EMPTY_PARAGRAPH_ATTRS: ParagraphAttrs = {
   pStyle: null,
@@ -318,42 +317,5 @@ export function readInlineChildren(nodes: XNode[], out: InlineNode[], ctx: RunCo
           out.push({ type: 'rawRun', attrs: { xml: serializeChildren([child]) ?? '', label: tag } })
         }
     }
-  }
-}
-
-/** w:ruby → ルビノード。ベースは w:rubyBase、ふりがなは w:rt */
-function readRuby(node: XNode, ctx: RunContext): RubyNode | null {
-  const rubyPr = findChild(node, 'w:rubyPr')
-  const rtNode = findChild(node, 'w:rt')
-  const baseNode = findChild(node, 'w:rubyBase')
-  if (!baseNode) return null
-
-  const baseInline: InlineNode[] = []
-  readInlineChildren(childrenOf(baseNode), baseInline, ctx)
-  const base = baseInline.filter((n): n is Extract<InlineNode, { type: 'text' }> => n.type === 'text')
-  if (base.length === 0) return null
-
-  const rtInline: InlineNode[] = []
-  if (rtNode) readInlineChildren(childrenOf(rtNode), rtInline, ctx)
-  const rt = rtInline.map((n) => (n.type === 'text' ? n.text : '')).join('')
-
-  // rubyPr が無い文書もあるので、その場合は w:ruby 直下を見る
-  const prSource = rubyPr ?? node
-  const align = valOf(findChild(prSource, 'w:rubyAlign')) ?? 'distributeSpace'
-  const rtRun = rtNode ? findChild(rtNode, 'w:r') : undefined
-  const rtProps = rtRun ? readRunProps(findChild(rtRun, 'w:rPr')).props : null
-
-  return {
-    type: 'ruby',
-    attrs: {
-      rt,
-      rubyAlign: align as RubyNode['attrs']['rubyAlign'],
-      hps: intVal(findChild(prSource, 'w:hps')),
-      hpsRaise: intVal(findChild(prSource, 'w:hpsRaise')),
-      hpsBaseText: intVal(findChild(prSource, 'w:hpsBaseText')),
-      lid: valOf(findChild(prSource, 'w:lid')) ?? 'ja-JP',
-      rtProps: rtProps && rtProps !== EMPTY_RUN_PROPS ? rtProps : null
-    },
-    content: base
   }
 }

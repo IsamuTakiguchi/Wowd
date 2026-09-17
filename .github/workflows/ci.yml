@@ -21,7 +21,6 @@ jobs:
 
       # フィクスチャとテンプレートは生成物なのでコミットしていない
       - run: npm run fixtures
-      - run: npx tsx scripts/make-templates.ts
 
       - run: npm test
 

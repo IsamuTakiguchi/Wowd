@@ -3,6 +3,8 @@ import type { Editor } from '@tiptap/react'
 import { Ribbon } from './components/Ribbon'
 import { StatusBar } from './components/StatusBar'
 import { FindReplace } from './components/FindReplace'
+import { RubyDialog } from './components/dialogs/RubyDialog'
+import { PageSetupDialog } from './components/dialogs/PageSetupDialog'
 import { WowdEditor } from './editor/Editor'
 import { useDocumentStore } from './store/document'
 import { useUiStore } from './store/ui'
@@ -15,6 +17,8 @@ export function App(): React.JSX.Element {
 
   const store = useDocumentStore()
   const toggleFind = useUiStore((s) => s.toggleFind)
+  const dialog = useUiStore((s) => s.dialog)
+  const openDialog = useUiStore((s) => s.openDialog)
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
 
   const onReady = useCallback((next: Editor | null) => setEditor(next), [])
@@ -131,6 +135,13 @@ export function App(): React.JSX.Element {
         <WowdEditor onReady={onReady} />
         <FindReplace editor={editor} />
       </main>
+
+      <RubyDialog
+        editor={editor}
+        open={dialog === 'ruby'}
+        onClose={() => openDialog(null)}
+      />
+      <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
 
       <StatusBar editor={editor} />
     </div>

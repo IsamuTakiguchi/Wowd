@@ -23,8 +23,20 @@ function matchPaper(section: SectionProps): string {
 }
 
 export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Element {
+  const openDialog = useUiStore((s) => s.openDialog)
   return (
     <div className="ribbon-tab-body">
+      <RibbonGroup label="日本語">
+        <RibbonRow>
+          <RibbonButton
+            label="ルビ"
+            title="選択した文字列にふりがなを付ける"
+            wide
+            disabled={!editor}
+            onClick={() => openDialog('ruby')}
+          />
+        </RibbonRow>
+      </RibbonGroup>
       <RibbonGroup label="ページ">
         <RibbonRow>
           <RibbonButton
@@ -46,14 +58,17 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
 
 export function LayoutTab(): React.JSX.Element {
   const document = useDocumentStore((s) => s.document)
-  const markDirty = useDocumentStore((s) => s.markDirty)
+  const updateSection = useDocumentStore((s) => s.updateSection)
+  const openDialog = useUiStore((s) => s.openDialog)
   const section = document?.resources.sections[0] ?? null
 
-  const update = (patch: (s: SectionProps) => void): void => {
-    if (!document || !section) return
-    patch(section)
-    markDirty()
+  const update = (patch: (s: SectionProps) => SectionProps): void => {
+    updateSection(0, patch)
   }
+
+  const grid = section
+    ? gridFromSection(section, normalSizeOf(document?.resources.styles.docDefaults.rPr?.sz))
+    : null
 
   return (
     <div className="ribbon-tab-body">
@@ -67,10 +82,10 @@ export function LayoutTab(): React.JSX.Element {
             onChange={(id) => {
               const paper = PAPER_SIZES.find((p) => p.id === id)
               if (!paper) return
-              update((s) => {
-                s.pgSz.w = mmToTwip(paper.w)
-                s.pgSz.h = mmToTwip(paper.h)
-              })
+              update((s) => ({
+                ...s,
+                pgSz: { ...s.pgSz, w: mmToTwip(paper.w), h: mmToTwip(paper.h) }
+              }))
             }}
           />
           <RibbonSelect
@@ -82,13 +97,12 @@ export function LayoutTab(): React.JSX.Element {
               { value: 'landscape', label: '横' }
             ]}
             onChange={(orient) =>
-              update((s) => {
-                if (orient === s.pgSz.orient) return
-                const { w, h } = s.pgSz
-                s.pgSz.w = h
-                s.pgSz.h = w
-                s.pgSz.orient = orient
-              })
+              update((s) =>
+                orient === s.pgSz.orient
+                  ? s
+                  : // 向きを変えたら縦横を入れ替える
+                    { ...s, pgSz: { w: s.pgSz.h, h: s.pgSz.w, orient } }
+              )
             }
           />
         </RibbonRow>
@@ -100,7 +114,26 @@ export function LayoutTab(): React.JSX.Element {
           </span>
         </RibbonRow>
       </RibbonGroup>
-      <PendingGroup label="日本語の体裁" items={['文字数と行数', '原稿用紙の設定', 'ルビ']} />
+      <RibbonGroup label="日本語の体裁">
+        <RibbonRow>
+          <RibbonButton
+            label="ページ設定..."
+            title="用紙・余白と文字数と行数をまとめて設定する"
+            wide
+            disabled={!section}
+            onClick={() => openDialog('pageSetup')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <span className="ribbon-readout" data-testid="grid-readout">
+            {grid
+              ? grid.charGridEnabled
+                ? `${grid.charsPerLine} 字 × ${grid.linesPerPage} 行`
+                : `${grid.linesPerPage} 行 (文字数は標準)`
+              : '文字数と行数の指定なし'}
+          </span>
+        </RibbonRow>
+      </RibbonGroup>
     </div>
   )
 }

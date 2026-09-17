@@ -529,3 +529,136 @@ body {
 .ProseMirror-selectednode {
   outline: 2px solid var(--ribbon-accent);
 }
+
+/* ── モーダルダイアログ ── */
+
+.wowd-dialog {
+  border: 1px solid #b0b0b0;
+  border-radius: 6px;
+  padding: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.wowd-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.wowd-dialog-header {
+  padding: 10px 16px;
+  font-weight: 600;
+  background: var(--ribbon-bg);
+  border-bottom: 1px solid var(--ribbon-border);
+}
+
+.wowd-dialog-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wowd-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ribbon-border);
+  background: #fafafa;
+}
+
+.wowd-dialog-footer button {
+  min-width: 84px;
+  height: 28px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.wowd-dialog-footer button.is-primary {
+  background: var(--ribbon-accent);
+  border-color: var(--ribbon-accent);
+  color: #fff;
+}
+
+.wowd-dialog-footer button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wowd-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.wowd-dialog-field > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.wowd-dialog-field input,
+.wowd-dialog-field select {
+  height: 28px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.wowd-dialog-row {
+  display: flex;
+  gap: 8px;
+}
+
+.wowd-dialog-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--ribbon-border);
+  margin-bottom: 4px;
+}
+
+.wowd-dialog-tabs button {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+}
+
+.wowd-dialog-tabs button.is-active {
+  border-bottom-color: var(--ribbon-accent);
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.wowd-dialog-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wowd-dialog-radios label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wowd-dialog-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.wowd-dialog-preview {
+  padding: 10px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 15px;
+}

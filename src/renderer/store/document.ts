@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { WowdDocument, WowdDoc } from '@core/model/types'
+import type { WowdDocument, WowdDoc, SectionProps } from '@core/model/types'
 import { docxClient } from '../workers/client'
 import { t } from '../i18n/ja'
 
@@ -35,6 +35,14 @@ export interface DocumentState {
   setError: (message: string | null) => void
   dismissUnsupported: () => void
   blockSaving: (reason: string) => void
+  /**
+   * セクション設定を差し替える。
+   *
+   * その場で書き換えるのではなく作り直すことで、resources の参照が変わり、
+   * 画面が自然に再描画される。書き換えだと参照が同じままなので、
+   * 別の印で再描画を促す必要が出てしまう。
+   */
+  updateSection: (index: number, patch: (section: SectionProps) => SectionProps) => void
 
   newDocument: (template: 'blank-a4' | 'blank-ja-b5') => Promise<void>
   openBytes: (bytes: Uint8Array, filePath: string | null) => Promise<void>
@@ -42,6 +50,11 @@ export interface DocumentState {
   openDialog: () => Promise<void>
   save: () => Promise<boolean>
   saveAs: () => Promise<boolean>
+  /**
+   * いまの内容を .docx のバイト列にする (ディスクには書かない)。
+   * 保存経路を丸ごと確かめたいときに使う。
+   */
+  saveToBytes: () => Promise<number[]>
   /**
    * エディタの現在のツリーを取り出す関数を登録する。
    * 打鍵のたびに全文を変換するのは O(文書長) で重すぎるので、保存時にだけ引き出す。
@@ -71,6 +84,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   markNumberingChanged: () => set({ numberingChanged: true, dirty: true }),
   setError: (message) => set({ error: message }),
   blockSaving: (reason) => set({ saveBlockedReason: reason, error: reason }),
+
+  updateSection: (index, patch) => {
+    const current = get().document
+    const target = current?.resources.sections[index]
+    if (!current || !target) return
+    const sections = current.resources.sections.map((s, i) => (i === index ? patch(s) : s))
+    set({
+      document: { ...current, resources: { ...current.resources, sections } },
+      dirty: true
+    })
+  },
   dismissUnsupported: () => set({ unsupported: [] }),
 
   setDocProvider: (provider) => {
@@ -142,6 +166,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const { filePath } = get()
     if (!filePath) return get().saveAs()
     return writeTo(filePath, get, set)
+  },
+
+  async saveToBytes() {
+    const { document, sourceBytes, numberingChanged } = get()
+    if (!document || !sourceBytes) return []
+    const latest = docProvider?.() ?? document.doc
+    const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, numberingChanged)
+    return Array.from(bytes)
   },
 
   async saveAs() {

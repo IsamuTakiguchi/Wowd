@@ -31,7 +31,12 @@ export const Ruby = Node.create({
 
   addAttributes() {
     return {
-      rt: { default: '', parseHTML: (el) => el.querySelector('rt')?.textContent ?? '' },
+      rt: {
+        default: '',
+        parseHTML: (el) => el.querySelector('rt')?.textContent ?? '',
+        // 属性としては出さない。<rt> 要素として描くので二重になる
+        renderHTML: () => ({})
+      },
       rubyAlign: carry<string>('distributeSpace'),
       hps: carry<number | null>(null),
       hpsRaise: carry<number | null>(null),
@@ -46,10 +51,14 @@ export const Ruby = Node.create({
   },
 
   renderHTML({ HTMLAttributes, node }) {
+    // ProseMirror はコンテンツホール (0) が親の唯一の子であることを要求する。
+    // <ruby> の直下にホールと <rt> を並べると
+    // "Content hole must be the only child of its parent node" で文書ごと読めなくなる。
+    // ベース文字を span で包んで、その中だけをホールにする。
     return [
       'ruby',
       mergeAttributes(HTMLAttributes, { 'data-wowd-ruby': '' }),
-      0,
+      ['span', { class: 'wowd-ruby-base' }, 0],
       ['rt', { contenteditable: 'false' }, String(node.attrs['rt'] ?? '')]
     ]
   }

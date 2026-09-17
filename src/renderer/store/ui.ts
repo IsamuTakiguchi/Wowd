@@ -12,6 +12,9 @@ export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' |
  */
 export type ViewMode = 'print' | 'draft'
 
+/** 開いているモーダルダイアログ */
+export type DialogKind = 'ruby' | 'pageSetup' | null
+
 export interface UiState {
   tab: RibbonTab
   zoom: number
@@ -23,6 +26,7 @@ export interface UiState {
   currentPage: number
   /** 文書全体のページ数 */
   pageCount: number
+  dialog: DialogKind
 
   setTab: (tab: RibbonTab) => void
   setZoom: (zoom: number) => void
@@ -31,6 +35,7 @@ export interface UiState {
   setViewMode: (mode: ViewMode) => void
   toggleGrid: (on?: boolean) => void
   setPageInfo: (current: number, count: number) => void
+  openDialog: (kind: DialogKind) => void
 }
 
 export const MIN_ZOOM = 50
@@ -44,6 +49,7 @@ export const useUiStore = create<UiState>((set) => ({
   showGrid: false,
   currentPage: 1,
   pageCount: 1,
+  dialog: null,
 
   setTab: (tab) => set({ tab }),
   setZoom: (zoom) => set({ zoom: clamp(zoom) }),
@@ -52,6 +58,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleFind: (open) => set((s) => ({ findOpen: open ?? !s.findOpen })),
   setViewMode: (viewMode) => set({ viewMode }),
   toggleGrid: (on) => set((s) => ({ showGrid: on ?? !s.showGrid })),
+  openDialog: (dialog) => set({ dialog }),
   setPageInfo: (currentPage, pageCount) =>
     set((s) =>
       s.currentPage === currentPage && s.pageCount === pageCount ? s : { currentPage, pageCount }

@@ -128,6 +128,33 @@ export function writeRunProps(set: MarkSet): string {
 export function writeInlineRuns(nodes: InlineNode[], inDeletion = false): string {
   let out = ''
   let i = 0
+  /**
+   * いま開いているコメント範囲。
+   *
+   * コメントはランを包むのではなく、範囲の前後に印を置く形で表される。
+   * ここで開閉を追わないと、読み込めても保存で消えてしまう。
+   */
+  let openComments: string[] = []
+
+  const syncComments = (next: string[]): string => {
+    let marks = ''
+    // 閉じるものを先に出す
+    for (const id of openComments) {
+      if (!next.includes(id)) marks += el('w:commentRangeEnd', { 'w:id': id })
+    }
+    // 参照は範囲を閉じた直後に置く
+    for (const id of openComments) {
+      if (!next.includes(id)) {
+        marks += wrap('w:r', undefined, el('w:commentReference', { 'w:id': id }))
+      }
+    }
+    for (const id of next) {
+      if (!openComments.includes(id)) marks += el('w:commentRangeStart', { 'w:id': id })
+    }
+    openComments = next
+    return marks
+  }
+
   while (i < nodes.length) {
     const node = nodes[i]!
 
@@ -141,14 +168,19 @@ export function writeInlineRuns(nodes: InlineNode[], inDeletion = false): string
         group.push(next)
         j++
       }
+      out += syncComments(set.commentIds)
       out += wrapRevision(set, () => writeTextRun(group, set, inDeletion || set.deletion != null))
       i = j
       continue
     }
 
+    out += syncComments([])
     out += writeInlineOther(node)
     i++
   }
+
+  // 段落の終わりで開いたままのものを閉じる
+  out += syncComments([])
   return out
 }
 
@@ -258,6 +290,8 @@ function writeRuby(node: Extract<InlineNode, { type: 'ruby' }>): string {
   )
 
   const base = wrap('w:rubyBase', undefined, writeInlineRuns(node.content))
-  return wrap('w:ruby', undefined, rubyPr + rt + base)
+  // w:ruby はラン内容 (EG_RunInnerContent) なので w:r で包む。
+  // 段落直下に置くと Word が読めないファイルになる
+  return wrap('w:r', undefined, wrap('w:ruby', undefined, rubyPr + rt + base))
 }
 

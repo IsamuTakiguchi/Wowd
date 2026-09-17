@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "fixtures": "tsx scripts/make-fixtures.ts",
+    "templates": "tsx scripts/make-templates.ts",
+    "fixtures": "npm run templates && tsx scripts/make-fixtures.ts && tsx scripts/make-ooxml-fixtures.ts",
     "verify:roundtrip": "tsx scripts/verify-roundtrip.ts",
     "e2e": "playwright test",
     "package": "npm run build && electron-builder"

@@ -1,4 +1,12 @@
-import type { Mark, RunProps, RunFonts, InlineNode, TextNode, RevisionMeta } from '../../model/types'
+import type {
+  Mark,
+  RunProps,
+  RunFonts,
+  InlineNode,
+  TextNode,
+  RevisionMeta,
+  RubyNode
+} from '../../model/types'
 import {
   type XNode,
   tagOf,
@@ -207,7 +215,11 @@ const KNOWN_RUN_CHILD = new Set([
   'w:softHyphen',
   'w:cr',
   'w:ruby',
-  'w:sym'
+  'w:sym',
+  // コメント参照は comment マークが id を持っているので、
+  // ここでは読み捨てて書き出し側で作り直す。
+  // raw として残すと、保存のたびに参照が 1 つずつ増える
+  'w:commentReference'
 ])
 
 /** w:r を InlineNode 列に展開する */
@@ -236,6 +248,7 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
     const tag = tagOf(child)
     switch (tag) {
       case 'w:rPr':
+      case 'w:commentReference':
         break
       case 'w:t':
       case 'w:delText':
@@ -273,6 +286,14 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
       case 'w:sym':
         pushText(symbolChar(child))
         break
+      case 'w:ruby': {
+        // w:ruby は w:r の内側に入る (EG_RunInnerContent)。
+        // 段落直下にあるものとして扱っていると、実際の Word 文書で
+        // ルビが丸ごと落ちる
+        const node = readRuby(child, ctx)
+        if (node) out.push(node)
+        break
+      }
       default:
         if (!KNOWN_RUN_CHILD.has(tag)) {
           ctx.unsupported.add(tag)
@@ -290,6 +311,59 @@ function symbolChar(node: XNode): string {
   if (!Number.isFinite(code)) return ''
   // シンボルフォントの私用領域 (F0xx) は対応する ASCII に寄せる
   return String.fromCodePoint(code >= 0xf000 && code <= 0xf0ff ? code - 0xf000 : code)
+}
+
+/**
+ * w:ruby を読む。
+ *
+ * ベースもふりがなも中身は w:r なので、ここで完結させている。
+ * 段落側の走査から呼ぶと循環参照になるうえ、ルビはラン内容なので
+ * ラン層で扱うのが構造的にも正しい。
+ */
+export function readRuby(node: XNode, ctx: RunContext): RubyNode | null {
+  const rubyPr = findChild(node, 'w:rubyPr')
+  const prSource = rubyPr ?? node
+  const baseNode = findChild(node, 'w:rubyBase')
+  if (!baseNode) return null
+
+  const base: TextNode[] = []
+  for (const run of childrenOf(baseNode)) {
+    if (tagOf(run) !== 'w:r') continue
+    for (const inline of readRun(run, ctx)) {
+      if (inline.type === 'text') base.push(inline)
+    }
+  }
+  if (base.length === 0) return null
+
+  const rtNode = findChild(node, 'w:rt')
+  let rt = ''
+  let rtProps: RunProps | null = null
+  if (rtNode) {
+    for (const run of childrenOf(rtNode)) {
+      if (tagOf(run) !== 'w:r') continue
+      const parsed = readRunProps(findChild(run, 'w:rPr'))
+      if (!isEmptyRunProps(parsed.props)) rtProps = parsed.props
+      for (const inline of readRun(run, ctx)) {
+        if (inline.type === 'text') rt += inline.text
+      }
+    }
+  }
+
+  const align = valOf(findChild(prSource, 'w:rubyAlign')) ?? 'distributeSpace'
+
+  return {
+    type: 'ruby',
+    attrs: {
+      rt,
+      rubyAlign: align as RubyNode['attrs']['rubyAlign'],
+      hps: intVal(findChild(prSource, 'w:hps')),
+      hpsRaise: intVal(findChild(prSource, 'w:hpsRaise')),
+      hpsBaseText: intVal(findChild(prSource, 'w:hpsBaseText')),
+      lid: valOf(findChild(prSource, 'w:lid')) ?? 'ja-JP',
+      rtProps
+    },
+    content: base
+  }
 }
 
 export function readRevisionMeta(node: XNode): RevisionMeta {
