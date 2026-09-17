@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/react'
 import { RibbonGroup, RibbonRow, RibbonButton, RibbonSelect } from './parts'
 import { useDocumentStore } from '../../store/document'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM } from '../../store/ui'
+import { gridFromSection, normalSizeOf } from '@core/layout/grid'
 import { twipToMm, mmToTwip } from '@shared/units'
 import type { SectionProps } from '@core/model/types'
 
@@ -35,7 +36,10 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
           />
         </RibbonRow>
       </RibbonGroup>
-      <PendingGroup label="表・画像・ヘッダー" items={['表の挿入', '画像の挿入', 'ヘッダーとフッター', 'ページ番号']} />
+      <PendingGroup
+        label="表・画像・ヘッダー"
+        items={['表の挿入', '画像の挿入', 'ヘッダーとフッターの編集', 'ページ番号の挿入']}
+      />
     </div>
   )
 }
@@ -105,9 +109,55 @@ export function ViewTab(): React.JSX.Element {
   const zoom = useUiStore((s) => s.zoom)
   const setZoom = useUiStore((s) => s.setZoom)
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
+  const viewMode = useUiStore((s) => s.viewMode)
+  const setViewMode = useUiStore((s) => s.setViewMode)
+  const showGrid = useUiStore((s) => s.showGrid)
+  const toggleGrid = useUiStore((s) => s.toggleGrid)
+
+  const document_ = useDocumentStore((s) => s.document)
+  const section = document_?.resources.sections[0] ?? null
+  const hasGrid = section
+    ? gridFromSection(section, normalSizeOf(document_?.resources.styles.docDefaults.rPr?.sz))
+        ?.charGridEnabled === true
+    : false
 
   return (
     <div className="ribbon-tab-body">
+      <RibbonGroup label="表示モード">
+        <RibbonRow>
+          <RibbonButton
+            label="印刷レイアウト"
+            title="ページに分割して用紙として表示する"
+            wide
+            active={viewMode === 'print'}
+            onClick={() => setViewMode('print')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="下書き"
+            title="ページ分割せず連続して表示する"
+            wide
+            active={viewMode === 'draft'}
+            onClick={() => setViewMode('draft')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="原稿用紙のマス目"
+            title={
+              hasGrid
+                ? '文字数と行数の指定に合わせてマス目を表示する'
+                : 'この文書には文字数と行数の指定がありません'
+            }
+            wide
+            active={showGrid}
+            disabled={!hasGrid}
+            onClick={() => toggleGrid()}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
       <RibbonGroup label="ズーム">
         <RibbonRow>
           <RibbonButton label="−" title="縮小" onClick={() => nudgeZoom(-10)} />
@@ -124,7 +174,6 @@ export function ViewTab(): React.JSX.Element {
           <RibbonButton label="100%" title="等倍に戻す" onClick={() => nudgeZoom(0)} />
         </RibbonRow>
       </RibbonGroup>
-      <PendingGroup label="表示モード" items={['印刷レイアウト (ページ表示)', 'ページ罫線', '原稿用紙マス目']} />
     </div>
   )
 }

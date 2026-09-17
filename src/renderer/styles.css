@@ -245,19 +245,73 @@ body {
   flex: 1;
   overflow: auto;
   padding: 24px 0 64px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
 }
 
 /*
- * ページ分割はまだ無いので、幅と余白だけ本物の 1 枚の紙として描く。
- * 印刷レイアウト (実際のページ分割) は Phase 5 で載せる。
+ * 倍率は transform で掛ける。CSS の zoom はレイアウトに影響し、
+ * 倍率を変えるだけで行分割と改ページ位置が動いてしまうため使わない。
+ *
+ * 中央寄せに flex は使わない。overflow する要素を flex で中央寄せすると
+ * 拡大時に左端がスクロールで到達できなくなる。margin auto なら問題ない。
  */
-.wowd-page {
+.wowd-scaler-box {
+  margin: 0 auto;
+}
+
+.wowd-scaler {
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.wowd-stage {
+  position: relative;
+}
+
+.wowd-stage-draft {
   background: var(--paper);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
   min-height: 400px;
+}
+
+/* 用紙の下地とヘッダー / フッター。本文とは別レイヤで、編集対象ではない */
+.wowd-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wowd-page-backdrop {
+  position: absolute;
+  left: 0;
+  background: var(--paper);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.wowd-header,
+.wowd-footer {
+  color: #444;
+  overflow: hidden;
+}
+
+.wowd-header p,
+.wowd-footer p {
+  margin: 0;
+}
+
+/* 本文フロー。用紙の上に重ねる */
+.wowd-flow {
+  position: relative;
+  z-index: 1;
+}
+
+.wowd-stage-draft .wowd-flow {
+  position: static;
+}
+
+/* 改ページのためにフローへ挿し込む空白。文書の内容ではない */
+.wowd-spacer {
+  user-select: none;
+  pointer-events: none;
 }
 
 .wowd-content {
@@ -293,6 +347,38 @@ body {
   white-space: pre;
 }
 
+/* フィールド。Word と同じく淡い網掛けで「計算された値」だと分かるようにする */
+.wowd-field {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ブックマークは幅を持たない位置指標 */
+.wowd-bookmark {
+  display: inline;
+}
+
+.wowd-image {
+  max-width: 100%;
+  vertical-align: baseline;
+}
+
+.wowd-table {
+  border-collapse: collapse;
+}
+
+.wowd-table td,
+.wowd-table th {
+  padding: 2pt 4pt;
+  vertical-align: top;
+}
+
+/* 罫線の指定が無いセルにも薄い補助線を出す (Word の「枠線の表示」相当) */
+.wowd-table td:not([style*="border"]),
+.wowd-table th:not([style*="border"]) {
+  outline: 1px dashed rgba(0, 0, 0, 0.12);
+  outline-offset: -1px;
+}
+
 /* 未対応要素。中身は保持されていて保存時に書き戻される */
 .wowd-raw {
   background: #f0f0f0;
@@ -317,6 +403,15 @@ body {
   text-align: center;
   margin: 8px 0;
   user-select: none;
+}
+
+/* 印刷レイアウトでは改ページ記号は不要。スペーサーが実際の改ページを作る */
+.wowd-viewport[data-view-mode='print'] .wowd-page-break {
+  border: 0;
+  margin: 0;
+  height: 0;
+  font-size: 0;
+  overflow: hidden;
 }
 
 /* ── 検索と置換 ── */

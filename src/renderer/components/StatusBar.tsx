@@ -19,6 +19,8 @@ export function StatusBar({ editor }: { editor: Editor | null }): React.JSX.Elem
   const busy = useDocumentStore((s) => s.busy)
   const zoom = useUiStore((s) => s.zoom)
   const setZoom = useUiStore((s) => s.setZoom)
+  const viewMode = useUiStore((s) => s.viewMode)
+  const pageCount = useUiStore((s) => s.pageCount)
 
   const text = editor?.getText() ?? ''
   const counts = countCharacters(text)
@@ -27,6 +29,11 @@ export function StatusBar({ editor }: { editor: Editor | null }): React.JSX.Elem
   return (
     <footer className="statusbar">
       <span>{busy ? '処理中...' : t.status.ready}</span>
+      {viewMode === 'print' && (
+        <span data-testid="page-count">
+          {pageCount.toLocaleString('ja-JP')} ページ
+        </span>
+      )}
       <span className="statusbar-spacer" />
       <span>
         {t.status.chars}: {counts.withSpace.toLocaleString('ja-JP')}

@@ -17,6 +17,13 @@ export interface DocumentState {
   /** 読み込み時に見つかった未対応要素。空でなければ画面に出す */
   unsupported: string[]
   /**
+   * 表示に失敗した理由。設定されている間は保存を禁じる。
+   *
+   * 表示に失敗するとエディタには前の文書が残るので、そのまま保存すると
+   * 開いたファイルが別物で上書きされる。黙って壊すより保存を止める。
+   */
+  saveBlockedReason: string | null
+  /**
    * 文書を読み込むたびに増える。エディタはこの値の変化だけを見て内容を差し替える。
    * document の参照変化を見ると、編集のたびに setContent が走って履歴が消える。
    */
@@ -27,6 +34,7 @@ export interface DocumentState {
   markNumberingChanged: () => void
   setError: (message: string | null) => void
   dismissUnsupported: () => void
+  blockSaving: (reason: string) => void
 
   newDocument: (template: 'blank-a4' | 'blank-ja-b5') => Promise<void>
   openBytes: (bytes: Uint8Array, filePath: string | null) => Promise<void>
@@ -50,6 +58,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   busy: false,
   error: null,
   unsupported: [],
+  saveBlockedReason: null,
   loadToken: 0,
 
   fileName: () => {
@@ -61,6 +70,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   markDirty: () => set({ dirty: true }),
   markNumberingChanged: () => set({ numberingChanged: true, dirty: true }),
   setError: (message) => set({ error: message }),
+  blockSaving: (reason) => set({ saveBlockedReason: reason, error: reason }),
   dismissUnsupported: () => set({ unsupported: [] }),
 
   setDocProvider: (provider) => {
@@ -79,6 +89,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         dirty: false,
         numberingChanged: false,
         unsupported: document.unsupported,
+        saveBlockedReason: null,
         loadToken: get().loadToken + 1
       })
     } catch (err) {
@@ -99,6 +110,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         dirty: false,
         numberingChanged: false,
         unsupported: document.unsupported,
+        saveBlockedReason: null,
         loadToken: get().loadToken + 1
       })
       if (filePath) await window.wowd.addRecent(filePath)
@@ -147,8 +159,12 @@ type Set = (partial: Partial<DocumentState>) => void
 let docProvider: (() => WowdDoc) | null = null
 
 async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
-  const { document, sourceBytes, numberingChanged } = get()
+  const { document, sourceBytes, numberingChanged, saveBlockedReason } = get()
   if (!document || !sourceBytes) return false
+  if (saveBlockedReason) {
+    set({ error: `保存を中止しました。${saveBlockedReason}` })
+    return false
+  }
   set({ busy: true, error: null })
   try {
     // 保存の直前にだけエディタから最新のツリーを引き出す
