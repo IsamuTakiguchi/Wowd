@@ -12,6 +12,7 @@ export const IPC = {
   addRecent: 'wowd:recent:add',
   clearRecent: 'wowd:recent:clear',
   readTemplate: 'wowd:template:read',
+  pickImage: 'wowd:image:pick',
   getAppInfo: 'wowd:app:info',
   showItemInFolder: 'wowd:shell:showItem',
   confirmDiscard: 'wowd:dialog:confirmDiscard',
@@ -30,6 +31,18 @@ export const IPC = {
 export interface OpenedFile {
   path: string
   bytes: Uint8Array
+}
+
+/** 挿入のために読み込んだ画像 */
+export interface PickedImage {
+  /** 元のファイル名 (拡張子つき) */
+  name: string
+  /** 拡張子から決めたコンテンツタイプ */
+  contentType: string
+  bytes: Uint8Array
+  /** ピクセル単位の実寸。分からなければ null */
+  width: number | null
+  height: number | null
 }
 
 export interface RecentEntry {
@@ -110,6 +123,8 @@ export interface WowdApi {
   /** アトミック書き込み (tmp へ書いて fsync → rename)。保存中のクラッシュで原本を失わない */
   writeFile(path: string, bytes: Uint8Array): Promise<void>
   readTemplate(id: TemplateId): Promise<Uint8Array>
+  /** 画像を選んで読み込む。取り消されたら null */
+  pickImage(): Promise<PickedImage | null>
 
   getRecent(): Promise<RecentEntry[]>
   addRecent(path: string): Promise<void>

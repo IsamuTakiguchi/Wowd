@@ -1,6 +1,7 @@
 import type { Mark, RunProps, RunFonts, InlineNode, TextNode, RevisionMeta } from '../../model/types'
 import { el, wrap, textEl, valEl, type AttrMap } from '../xml'
 import { RPR_ORDER, emitOrdered, splitFragments, type OrderedFragment } from './order'
+import { writeDrawing } from './drawing'
 
 export interface MarkSet {
   bold: boolean
@@ -259,8 +260,11 @@ function writeInlineOther(node: InlineNode): string {
       return writeRuby(node)
     case 'image':
       // 原文を保持しているならそれを書き戻す。
-      // 回り込みや効果まで含めて完全に再現でき、情報が落ちない
-      return node.attrs.rawDrawing ? wrap('w:r', undefined, node.attrs.rawDrawing) : ''
+      // 回り込みや効果まで含めて完全に再現でき、情報が落ちない。
+      // 持たない (このアプリで挿入した) 画像は最小限の骨格を組み立てる
+      return node.attrs.rawDrawing
+        ? wrap('w:r', undefined, node.attrs.rawDrawing)
+        : writeDrawing(node)
     case 'rawRun':
       return node.attrs.xml
     case 'text':

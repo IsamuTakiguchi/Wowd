@@ -26,6 +26,18 @@ class MediaRegistry {
     }
   }
 
+  /** 1 件だけ足す。挿入した画像を待たずに表示するため */
+  add(mediaKey: string, bytes: Uint8Array, contentType: string): void {
+    const previous = this.urls.get(mediaKey)
+    if (previous) URL.revokeObjectURL(previous)
+    try {
+      const blob = new Blob([bytes as BlobPart], { type: contentType })
+      this.urls.set(mediaKey, URL.createObjectURL(blob))
+    } catch {
+      // 表示できなくても、保存されるバイト列には影響しない
+    }
+  }
+
   get(mediaKey: string): string | null {
     return this.urls.get(mediaKey) ?? null
   }

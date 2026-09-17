@@ -12,7 +12,11 @@
     "tests/unit/**/*.ts",
     "tests/e2e/**/*.ts"
   ],
-  "exclude": ["tests/unit/schemaCoverage.test.ts", "tests/unit/trackChanges.test.ts"],
+  "exclude": [
+    "tests/unit/schemaCoverage.test.ts",
+    "tests/unit/trackChanges.test.ts",
+    "tests/unit/image.test.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "lib": ["ES2022", "DOM"],

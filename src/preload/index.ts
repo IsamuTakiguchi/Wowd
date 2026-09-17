@@ -17,6 +17,7 @@ const api: WowdApi = {
   saveDialog: (defaultPath?: string) => ipcRenderer.invoke(IPC.saveDialog, defaultPath),
   writeFile: (path: string, bytes: Uint8Array) => ipcRenderer.invoke(IPC.writeFile, path, bytes),
   readTemplate: (id: TemplateId) => ipcRenderer.invoke(IPC.readTemplate, id),
+  pickImage: () => ipcRenderer.invoke(IPC.pickImage),
 
   getRecent: () => ipcRenderer.invoke(IPC.getRecent),
   addRecent: (path: string) => ipcRenderer.invoke(IPC.addRecent, path),

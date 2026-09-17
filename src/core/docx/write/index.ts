@@ -1,7 +1,8 @@
-import type { WowdDocument, SectionProps } from '../../model/types'
+import type { WowdDocument, SectionProps, MediaEntry } from '../../model/types'
 import {
   savePackage,
   ensureOverrideContentType,
+  ensureDefaultContentType,
   ensureRelationship,
   relsPartNameFor,
   type DocxPackage
@@ -75,7 +76,56 @@ export function writeDocx(
     writeExtendedComments(doc, pkg, overrides)
   }
 
+  writeNewMedia(doc, pkg, overrides)
+
   return savePackage(pkg, { overrides })
+}
+
+const IMAGE_REL_TYPE =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'
+
+/**
+ * 元パッケージに無かった画像パートを足す。
+ *
+ * 画像を挿入すると resources.media と resources.rels には載るが、
+ * パッケージには入っていない。バイト列・関係・コンテンツタイプの
+ * 3 つが揃わないと Word は画像を見つけられない。
+ */
+function writeNewMedia(
+  doc: WowdDocument,
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>
+): void {
+  const added: { key: string; entry: MediaEntry }[] = []
+  for (const [key, entry] of doc.resources.media) {
+    if (pkg.parts.has(key)) continue
+    added.push({ key, entry })
+  }
+  if (added.length === 0) return
+
+  const relsPart = relsPartNameFor(doc.resources.documentPartName)
+  let relsXml = decodePart(pkg, relsPart)
+  let contentTypes = decodePart(pkg, '[Content_Types].xml')
+
+  for (const { key, entry } of added) {
+    overrides.set(key, entry.bytes)
+
+    // 関係。挿入側が採番した rId を使う。合わないと本文から参照できない
+    const target = key.replace(/^word\//, '')
+    const rel = [...doc.resources.rels.byId.values()].find((r) => r.target === target)
+    if (relsXml && rel) {
+      relsXml = ensureRelationship(relsXml, rel.id, IMAGE_REL_TYPE, target)
+    }
+
+    // 拡張子ごとの既定コンテンツタイプ
+    const ext = key.split('.').pop() ?? ''
+    if (contentTypes && ext) {
+      contentTypes = ensureDefaultContentType(contentTypes, ext, entry.contentType)
+    }
+  }
+
+  if (relsXml) overrides.set(relsPart, relsXml)
+  if (contentTypes) overrides.set('[Content_Types].xml', contentTypes)
 }
 
 /** commentsExtended のパート名・関係・コンテンツタイプ */

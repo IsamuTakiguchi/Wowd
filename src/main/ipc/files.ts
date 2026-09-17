@@ -1,10 +1,27 @@
-import { dialog, ipcMain, shell, app, BrowserWindow } from 'electron'
+import { dialog, ipcMain, shell, app, nativeImage, BrowserWindow } from 'electron'
 import { readFile, writeFile, rename, mkdtemp, open, unlink } from 'node:fs/promises'
 import { basename, join, isAbsolute, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
-import { IPC, type OpenedFile, type TemplateId } from '../../shared/ipc'
+import { IPC, type OpenedFile, type TemplateId, type PickedImage } from '../../shared/ipc'
 
 const DOCX_FILTER = [{ name: 'Word 文書', extensions: ['docx'] }]
+
+/**
+ * 挿入できる画像。Word が既定で扱える形式に絞る。
+ * 拡張子からコンテンツタイプを決めるので、対応表がそのまま許可リストになる。
+ */
+const IMAGE_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  tif: 'image/tiff',
+  tiff: 'image/tiff'
+}
+
+/** 挿入できる画像の上限。極端に大きいものは文書ごと開けなくなる */
+const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 /** レンダラから来たパスは信用しない。絶対パスで .docx であることを main 側で再検証する */
 function assertSafeDocxPath(p: unknown): string {
@@ -80,6 +97,34 @@ export function registerFileIpc(): void {
       ? join(process.resourcesPath, 'templates')
       : join(__dirname, '..', '..', 'resources', 'templates')
     return await readFile(join(base, `${id}.docx`))
+  })
+
+  ipcMain.handle(IPC.pickImage, async (): Promise<PickedImage | null> => {
+    const win = BrowserWindow.getFocusedWindow()
+    const opts = {
+      properties: ['openFile' as const],
+      filters: [{ name: '画像', extensions: Object.keys(IMAGE_TYPES) }]
+    }
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    const picked = res.filePaths[0]
+    if (res.canceled || !picked) return null
+
+    const ext = picked.split('.').pop()?.toLowerCase() ?? ''
+    const contentType = IMAGE_TYPES[ext]
+    if (!contentType) throw new Error('対応していない画像形式です')
+
+    const bytes = await readFile(picked)
+    if (bytes.length > MAX_IMAGE_BYTES) throw new Error('画像が大きすぎます (32MB まで)')
+
+    // 実寸はここで測る。renderer 側で測ると挿入までに 1 往復増える
+    const size = nativeImage.createFromBuffer(bytes).getSize()
+    return {
+      name: basename(picked),
+      contentType,
+      bytes,
+      width: size.width > 0 ? size.width : null,
+      height: size.height > 0 ? size.height : null
+    }
   })
 
   ipcMain.handle(IPC.showItemInFolder, async (_e, p: string): Promise<void> => {

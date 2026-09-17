@@ -4,6 +4,8 @@ import { readDocx } from '@core/docx/read'
 import { writeDocx } from '@core/docx/write'
 import { openPackage } from '@core/docx/package'
 import { fixtureNames, readFixture } from './helpers'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 /** Map / Set を含むモデルを比較可能な素の値に落とす */
 function normalize(value: unknown): unknown {
@@ -290,5 +292,99 @@ describe('変更履歴', () => {
 
     const again = readDocx(saved, '10-revisions.docx')
     expect(normalize(again.doc)).toEqual(normalize(model.doc))
+  })
+})
+
+describe('画像の挿入', () => {
+  it('新しい画像がパート・関係・コンテンツタイプごと保存される', () => {
+    const source = readFixture('01-plain.docx')
+    const model = readDocx(source, '01-plain.docx')
+    expect(model.resources.media.size, '元の文書に画像は無い').toBe(0)
+
+    // 挿入したときと同じことをする (資源に足すだけ)
+    const bytes = new Uint8Array(readFileSync(join('tests', 'fixtures', 'sample.png')))
+    model.resources.media.set('word/media/image1.png', { bytes, contentType: 'image/png' })
+    const relId = `rId${model.resources.rels.nextId}`
+    model.resources.rels.byId.set(relId, {
+      id: relId,
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+      target: 'media/image1.png',
+      targetMode: null
+    })
+
+    const saved = writeDocx(model, model.pkg)
+    const parts = unzipSync(saved)
+
+    // 1. バイト列がそのまま入っている
+    expect(parts['word/media/image1.png']).toBeDefined()
+    expect(parts['word/media/image1.png']?.length).toBe(bytes.length)
+
+    // 2. 関係が張られている
+    const rels = strFromU8(parts['word/_rels/document.xml.rels'] as Uint8Array)
+    expect(rels).toContain(`Id="${relId}"`)
+    expect(rels).toContain('media/image1.png')
+
+    // 3. 拡張子の既定コンテンツタイプがある
+    const types = strFromU8(parts['[Content_Types].xml'] as Uint8Array)
+    expect(types).toMatch(/<Default[^>]*Extension="png"/)
+  })
+
+  it('原文を持たない画像でも w:drawing を組み立てて書き出す', () => {
+    const source = readFixture('01-plain.docx')
+    const model = readDocx(source, '01-plain.docx')
+    const bytes = new Uint8Array(readFileSync(join('tests', 'fixtures', 'sample.png')))
+
+    model.resources.media.set('word/media/image1.png', { bytes, contentType: 'image/png' })
+    const relId = `rId${model.resources.rels.nextId}`
+    model.resources.rels.byId.set(relId, {
+      id: relId,
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+      target: 'media/image1.png',
+      targetMode: null
+    })
+    // 挿入した画像は rawDrawing を持たない。ここが書けないと保存で消える
+    const first = model.doc.content[0]
+    if (first?.type !== 'paragraph') throw new Error('先頭が段落でない')
+    first.content = [
+      ...(first.content ?? []),
+      {
+        type: 'image',
+        attrs: {
+          mediaKey: 'word/media/image1.png',
+          relId,
+          cx: 914400,
+          cy: 914400,
+          wrap: 'inline',
+          name: 'sample.png',
+          descr: '',
+          inline: true,
+          rawDrawing: null
+        }
+      }
+    ]
+
+    const saved = writeDocx(model, model.pkg)
+    const xml = strFromU8(unzipSync(saved)['word/document.xml'] as Uint8Array)
+    expect(xml).toContain('<w:drawing>')
+    expect(xml).toContain(`r:embed="${relId}"`)
+    expect(xml).toContain('cx="914400"')
+
+    // 読み直すと画像として戻る
+    const again = readDocx(saved, '01-plain.docx')
+    const images = again.doc.content.flatMap((b) =>
+      b.type === 'paragraph' ? (b.content ?? []).filter((n) => n.type === 'image') : []
+    )
+    expect(images).toHaveLength(1)
+    expect(images[0]).toMatchObject({ attrs: { mediaKey: 'word/media/image1.png', cx: 914400 } })
+  })
+
+  it('もともとある画像のパートは書き直さない', () => {
+    const source = readFixture('12-image.docx')
+    const model = readDocx(source, '12-image.docx')
+    const saved = writeDocx(model, model.pkg)
+
+    const before = unzipSync(source)['word/media/image1.png']
+    const after = unzipSync(saved)['word/media/image1.png']
+    expect(after).toEqual(before)
   })
 })

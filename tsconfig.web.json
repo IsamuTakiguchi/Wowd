@@ -7,7 +7,8 @@
     "src/core/**/*.ts",
     "src/types/**/*.d.ts",
     "tests/unit/schemaCoverage.test.ts",
-    "tests/unit/trackChanges.test.ts"
+    "tests/unit/trackChanges.test.ts",
+    "tests/unit/image.test.ts"
   ],
   "compilerOptions": {
     "composite": true,

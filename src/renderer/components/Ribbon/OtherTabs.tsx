@@ -5,6 +5,7 @@ import { useDocumentStore } from '../../store/document'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM } from '../../store/ui'
 import { gridFromSection, normalSizeOf } from '@core/layout/grid'
 import { insertTable, tableCommands, textWidthOf } from '../../editor/commands/table'
+import { registerImage, insertImage, textWidthEmu } from '../../editor/commands/image'
 import { insertOrUpdateToc } from '../../editor/commands/toc'
 import { twipToMm, mmToTwip } from '@shared/units'
 import type { SectionProps } from '@core/model/types'
@@ -31,6 +32,34 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
   const section = document_?.resources.sections[0] ?? null
   const inTable = editor?.isActive('table') ?? false
   const commands = editor ? tableCommands(editor) : null
+
+  /**
+   * 画像を選んで挿入する。
+   *
+   * バイト列・関係・本文のノードを一度に足す。どれか 1 つでも欠けると
+   * Word 側で画像が見つからず、開いたときに空欄になる。
+   */
+  const addImage = async (): Promise<void> => {
+    if (!editor || !document_ || !section) return
+    try {
+      const picked = await window.wowd.pickImage()
+      if (!picked) return
+      const image = registerImage(
+        document_,
+        picked,
+        textWidthEmu(section.pgSz.w, section.pgMar.left + section.pgMar.gutter, section.pgMar.right)
+      )
+      insertImage(editor, image, picked.name)
+      // 資源を直接書き換えたので、保存が必要なことを知らせる
+      useDocumentStore.getState().markDirty()
+    } catch (err) {
+      useDocumentStore
+        .getState()
+        .setError(
+          `画像を挿入できませんでした: ${err instanceof Error ? err.message : String(err)}`
+        )
+    }
+  }
 
   const addTable = (rows: number, cols: number) => (): void => {
     if (!editor || !section) return
@@ -136,9 +165,21 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
         </RibbonRow>
       </RibbonGroup>
 
+      <RibbonGroup label="画像">
+        <RibbonRow>
+          <RibbonButton
+            label="画像を挿入"
+            title="画像ファイルを選んで本文に挿入する"
+            wide
+            disabled={!editor || !document_ || !section}
+            onClick={() => void addImage()}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
       <PendingGroup
-        label="画像・ヘッダー"
-        items={['画像の挿入', 'ヘッダーとフッターの編集', 'ページ番号の挿入']}
+        label="ヘッダー"
+        items={['ヘッダーとフッターの編集', 'ページ番号の挿入']}
       />
     </div>
   )
