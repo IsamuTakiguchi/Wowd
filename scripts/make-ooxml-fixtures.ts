@@ -189,6 +189,19 @@ function fieldsDoc(): string {
   )
 }
 
+/** w:comments パートを 1 件だけ持つ最小の中身 */
+function singleCommentPart(id: string, author: string, body: string): Uint8Array {
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n` +
+    `<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ` +
+    `xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" ` +
+    `xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14">` +
+    `<w:comment w:id="${id}" w:author="${author}" w:initials="X" w:date="2026-01-05T00:00:00Z">` +
+    `<w:p w14:paraId="44444444"><w:r><w:t xml:space="preserve">${body}</w:t></w:r></w:p>` +
+    `</w:comment></w:comments>`
+  return new TextEncoder().encode(xml)
+}
+
 /** 10: 変更履歴とコメント範囲 */
 function revisionsDoc(): string {
   const ins =
@@ -406,7 +419,13 @@ function main(): void {
   emit('07-grid-40x36.docx', 'blank-ja-b5.docx', gridDoc())
   emit('08-tables.docx', 'blank-a4.docx', tableDoc())
   emit('09-fields.docx', 'blank-a4.docx', fieldsDoc())
-  emit('10-revisions.docx', 'blank-a4.docx', revisionsDoc())
+  // 本文がコメント 1 を参照するので、実体も一緒に入れる。
+  // 参照だけあって実体が無いと、Word では壊れた文書になる
+  emit('10-revisions.docx', 'blank-a4.docx', revisionsDoc(), {
+    parts: new Map([
+      ['word/comments.xml', singleCommentPart('1', '校閲者C', 'この範囲にコメントを付けました。')]
+    ])
+  })
   emit('11-hostile.docx', 'blank-a4.docx', hostileDoc())
   emit('13-headings.docx', 'blank-a4.docx', headingsDoc())
 

@@ -16,6 +16,8 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'nod
 import { join } from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
 import { readDocx } from '../src/core/docx/read'
+import { openPackage } from '../src/core/docx/package'
+import { validatePackage, errorsOnly, formatProblems } from '../src/core/docx/validate'
 import { parseXml } from '../src/core/docx/xml'
 
 const OUT_DIR = join(process.cwd(), 'word-check')
@@ -370,6 +372,19 @@ function inspect(): number {
         console.error(`  NG  ${name}: ${part} が整形式でない`)
         failures++
       }
+    }
+
+    // パッケージ全体の参照グラフが閉じているか。
+    // XSD はパート単体しか見ないので、この層は別に見る必要がある
+    try {
+      const problems = errorsOnly(validatePackage(openPackage(bytes)))
+      if (problems.length > 0) {
+        console.error(`  NG  ${name}: 参照が切れています\n${formatProblems(problems)}`)
+        failures += problems.length
+      }
+    } catch (err) {
+      console.error(`  NG  ${name}: 整合性を検査できない (${String(err)})`)
+      failures++
     }
 
     // Wowd 自身が読み直せるか
