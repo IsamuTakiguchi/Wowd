@@ -169,8 +169,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async saveToBytes() {
-    const { document, sourceBytes, numberingChanged } = get()
+    const { document, sourceBytes, numberingChanged, saveBlockedReason } = get()
     if (!document || !sourceBytes) return []
+    // 表示に失敗している状態で保存するとエディタの中身 (前の文書) を
+    // 書き出してしまう。writeTo と同じく止める
+    if (saveBlockedReason) return []
     const latest = docProvider?.() ?? document.doc
     const bytes = await docxClient.save({ ...document, doc: latest }, sourceBytes, numberingChanged)
     return Array.from(bytes)

@@ -18,6 +18,13 @@ import { Numbering } from './Numbering'
 import { Ruby, Field, Bookmark, WBreak } from './InlineNodes'
 import { WImage } from './WImage'
 import { WTable, WTableRow, WTableCell, WTableHeader } from './WTable'
+import {
+  DoubleStrike,
+  WLink,
+  CommentMark,
+  InsertionMark,
+  DeletionMark
+} from './Marks'
 
 /**
  * 使用する拡張の一覧。
@@ -39,6 +46,13 @@ export function buildExtensions(): (Extension | Node | Mark)[] {
     Underline,
     Strike,
     WRunProps,
+    // マークもノードと同じく、モデルが作りうるものはすべて登録する。
+    // 1 つでも欠けると、それを含む文書が読み込み時に例外になる
+    DoubleStrike,
+    WLink,
+    CommentMark,
+    InsertionMark,
+    DeletionMark,
 
     WTab,
     PageBreak,
@@ -82,5 +96,10 @@ export {
   Bookmark,
   WBreak,
   WImage,
-  WTable
+  WTable,
+  DoubleStrike,
+  WLink,
+  CommentMark,
+  InsertionMark,
+  DeletionMark
 }

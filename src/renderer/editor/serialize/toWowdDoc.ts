@@ -11,6 +11,7 @@ import type {
 } from '@core/model/types'
 import { DEFAULT_PARAGRAPH_ATTRS } from '../extensions/paragraphAttrs'
 import { headingStyleId } from './headingStyle'
+import { restoreMergeContinuations } from './tableGrid'
 import type { PMJson } from './fromWowdDoc'
 
 /**
@@ -79,7 +80,9 @@ function tableFromPM(node: PMJson): TableNode {
       })
     )
   }))
-  return { type: 'table', attrs: (node.attrs ?? {}) as TableNode['attrs'], content: rows }
+  const attrs = (node.attrs ?? {}) as TableNode['attrs']
+  // OOXML は縦結合の継続セルを各行に明示する必要がある
+  return { type: 'table', attrs, content: restoreMergeContinuations(rows, attrs.grid ?? []) }
 }
 
 function isInline(n: InlineNode | null): n is InlineNode {

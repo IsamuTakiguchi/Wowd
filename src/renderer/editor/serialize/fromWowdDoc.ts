@@ -1,5 +1,6 @@
 import type { WowdDoc, BlockNode, InlineNode, ParagraphNode } from '@core/model/types'
 import { headingLevelOf } from './headingStyle'
+import { stripMergeContinuations } from './tableGrid'
 
 /** ProseMirror が受け取る JSON。WowdDoc とほぼ同型だが heading だけ形が違う */
 export interface PMJson {
@@ -26,7 +27,9 @@ function blockToPM(node: BlockNode): PMJson {
       return {
         type: 'table',
         attrs: { ...node.attrs },
-        content: node.content.map((row) => ({
+        // 縦結合の継続セルは ProseMirror の表モデルに存在しない。
+        // 残すと列数が合わず、prosemirror-tables が勝手にセルを足す
+        content: stripMergeContinuations(node).map((row) => ({
           type: 'tableRow',
           attrs: { ...row.attrs },
           content: row.content.map((cell) => ({

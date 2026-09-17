@@ -662,3 +662,37 @@ body {
   border-radius: 3px;
   font-size: 15px;
 }
+
+/* ── 変更履歴とコメント ── */
+
+/* 挿入された文字。著者ごとの色分けは校閲 UI と一緒に入れる */
+.wowd-ins {
+  color: #0b6bcb;
+  text-decoration: underline;
+}
+
+/*
+ * 削除された文字。承諾されるまでは文書の一部なので消さずに残す。
+ * 消してしまうと「元に戻す」で復元できない。
+ */
+.wowd-del {
+  color: #b3261e;
+  text-decoration: line-through;
+}
+
+/* コメントが付いた範囲 */
+.wowd-comment {
+  background: rgba(255, 214, 0, 0.28);
+  border-bottom: 1px dotted #b38f00;
+}
+
+.wowd-link {
+  color: #0b6bcb;
+  text-decoration: underline;
+  cursor: text;
+}
+
+/* ルビ。ベース文字を span で包んでいる (ProseMirror の制約) */
+.wowd-ruby-base {
+  ruby-align: center;
+}

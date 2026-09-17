@@ -4,7 +4,7 @@ import { Node as PMNode } from '@tiptap/pm/model'
 import { buildExtensions } from '@renderer/editor/extensions'
 import { fromWowdDoc } from '@renderer/editor/serialize/fromWowdDoc'
 import { toWowdDoc } from '@renderer/editor/serialize/toWowdDoc'
-import type { WowdDoc, BlockNode, InlineNode } from '@core/model/types'
+import type { WowdDoc, BlockNode, InlineNode, Mark } from '@core/model/types'
 import { EMPTY_PARAGRAPH_ATTRS } from '@core/docx/read/paragraph'
 
 /**
@@ -174,6 +174,60 @@ describe('スキーマの網羅性', () => {
     if (first?.type === 'paragraph') {
       expect(first.content?.[0]).toMatchObject({ type: 'text', text: '本文' })
     }
+  })
+
+  it('モデルが作りうるマークがすべてスキーマにある', () => {
+    // マークもノードと同じく、1 つでも欠けるとそれを含む文書が読めなくなる。
+    // 実際に変更履歴とコメントのマークが抜けていて、本文が丸ごと消えていた
+    const revision = { id: 1, author: '校閲者', date: '2026-01-01T00:00:00Z' }
+    const marks: Mark[] = [
+      { type: 'bold' },
+      { type: 'italic' },
+      { type: 'underline', attrs: { val: 'single', color: null } },
+      { type: 'strike' },
+      { type: 'doubleStrike' },
+      { type: 'link', attrs: { href: null, anchor: '_Toc1', rId: 'rId9', tooltip: null } },
+      { type: 'comment', attrs: { ids: ['1', '2'] } },
+      { type: 'insertion', attrs: revision },
+      { type: 'deletion', attrs: revision }
+    ]
+
+    for (const mark of marks) {
+      const doc = docOf(para({ type: 'text', text: '本文', marks: [mark] }))
+      const { restored, error } = throughEditor(doc)
+      expect(error, `${mark.type}: スキーマ検証で例外 ${error}`).toBeNull()
+
+      const first = restored.content[0]
+      expect(first?.type).toBe('paragraph')
+      if (first?.type !== 'paragraph') continue
+      const text = first.content?.[0]
+      expect(text, `${mark.type}: 本文が消えた`).toBeDefined()
+      expect(
+        text?.type === 'text' && text.marks?.some((m) => m.type === mark.type),
+        `${mark.type} が失われた`
+      ).toBe(true)
+    }
+  })
+
+  it('複数のマークが同時に載っても失われない', () => {
+    const doc = docOf(
+      para({
+        type: 'text',
+        text: '赤入り',
+        marks: [
+          { type: 'bold' },
+          { type: 'comment', attrs: { ids: ['5'] } },
+          { type: 'insertion', attrs: { id: 3, author: 'A', date: '2026-01-01T00:00:00Z' } }
+        ]
+      })
+    )
+    const { restored, error } = throughEditor(doc)
+    expect(error).toBeNull()
+    const first = restored.content[0]
+    if (first?.type !== 'paragraph') throw new Error('段落が失われた')
+    const text = first.content?.[0]
+    const types = text?.type === 'text' ? (text.marks ?? []).map((m) => m.type).sort() : []
+    expect(types).toEqual(['bold', 'comment', 'insertion'])
   })
 
   it('複合文書でもすべての要素が残る', () => {
