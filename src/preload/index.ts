@@ -22,6 +22,12 @@ const api: WowdApi = {
   addRecent: (path: string) => ipcRenderer.invoke(IPC.addRecent, path),
   clearRecent: () => ipcRenderer.invoke(IPC.clearRecent),
 
+  saveRecovery: (bytes: Uint8Array, originalPath: string | null, name: string) =>
+    ipcRenderer.invoke(IPC.saveRecovery, bytes, originalPath, name),
+  listRecovery: () => ipcRenderer.invoke(IPC.listRecovery),
+  readRecovery: (id: string) => ipcRenderer.invoke(IPC.readRecovery, id),
+  clearRecovery: () => ipcRenderer.invoke(IPC.clearRecovery),
+
   getAppInfo: () => ipcRenderer.invoke(IPC.getAppInfo),
   showItemInFolder: (path: string) => ipcRenderer.invoke(IPC.showItemInFolder, path),
   confirmDiscard: (name: string) => ipcRenderer.invoke(IPC.confirmDiscard, name),

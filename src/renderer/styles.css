@@ -899,3 +899,28 @@ body {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* 復元の候補。前回の異常終了から自動保存を開き直す */
+.recovery-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.recovery-list button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.recovery-time {
+  color: var(--muted);
+  font-size: 10px;
+}

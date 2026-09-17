@@ -17,6 +17,10 @@ export const IPC = {
   confirmDiscard: 'wowd:dialog:confirmDiscard',
   reportError: 'wowd:dialog:error',
   printToPdf: 'wowd:print:toPdf',
+  saveRecovery: 'wowd:recovery:save',
+  listRecovery: 'wowd:recovery:list',
+  readRecovery: 'wowd:recovery:read',
+  clearRecovery: 'wowd:recovery:clear',
   // main → renderer (push)
   menuCommand: 'wowd:menu:command',
   openFileRequest: 'wowd:file:openRequest',
@@ -52,6 +56,22 @@ export interface PrintResult {
   pageCount: number
 }
 
+/**
+ * 自動保存された復元候補。
+ *
+ * id は main 側が振る不透明な識別子で、renderer からはこれしか触れない。
+ * renderer にパスを組み立てさせない (組み立てさせると
+ * 任意の場所を読み書きさせる隙になる)。
+ */
+export interface RecoveryEntry {
+  id: string
+  /** 元のファイルのパス。未保存の文書なら null */
+  originalPath: string | null
+  /** 画面に出す名前 */
+  name: string
+  savedAt: number
+}
+
 export interface AppInfo {
   version: string
   platform: string
@@ -75,7 +95,12 @@ export type MenuCommand =
   | { kind: 'edit.undo' }
   | { kind: 'edit.redo' }
   | { kind: 'edit.find' }
+  | { kind: 'edit.selectAll' }
   | { kind: 'view.zoom'; delta: number }
+  | { kind: 'review.toggleTracking' }
+  | { kind: 'review.applyAll'; action: 'accept' | 'reject' }
+  | { kind: 'review.goto'; direction: 1 | -1 }
+  | { kind: 'review.toggleComments' }
   | { kind: 'help.about' }
 
 export interface WowdApi {
@@ -89,6 +114,12 @@ export interface WowdApi {
   getRecent(): Promise<RecentEntry[]>
   addRecent(path: string): Promise<void>
   clearRecent(): Promise<void>
+
+  /** 自動保存。未保存の変更をクラッシュから守る */
+  saveRecovery(bytes: Uint8Array, originalPath: string | null, name: string): Promise<void>
+  listRecovery(): Promise<RecoveryEntry[]>
+  readRecovery(id: string): Promise<Uint8Array | null>
+  clearRecovery(): Promise<void>
 
   getAppInfo(): Promise<AppInfo>
   showItemInFolder(path: string): Promise<void>

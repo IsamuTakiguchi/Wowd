@@ -87,7 +87,14 @@ export async function buildMenu(): Promise<void> {
         { role: 'cut', label: '切り取り' },
         { role: 'copy', label: 'コピー' },
         { role: 'paste', label: '貼り付け' },
-        { role: 'selectAll', label: 'すべて選択' },
+        {
+          // 役割 (role) ではなく本文のコマンドに回す。
+          // role の selectAll はブラウザ既定の全選択で、
+          // 選択状態が ProseMirror へ非同期にしか伝わらない
+          label: 'すべて選択',
+          accelerator: 'CmdOrCtrl+A',
+          click: () => send({ kind: 'edit.selectAll' })
+        },
         { type: 'separator' },
         { label: '検索と置換...', accelerator: 'CmdOrCtrl+F', click: () => send({ kind: 'edit.find' }) }
       ]
@@ -101,6 +108,42 @@ export async function buildMenu(): Promise<void> {
         { type: 'separator' },
         { role: 'reload', label: '再読み込み' },
         { role: 'toggleDevTools', label: '開発者ツール' }
+      ]
+    },
+    {
+      label: '校閲(&R)',
+      submenu: [
+        {
+          label: '変更履歴の記録',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => send({ kind: 'review.toggleTracking' })
+        },
+        { type: 'separator' },
+        {
+          label: 'すべての変更を反映',
+          click: () => send({ kind: 'review.applyAll', action: 'accept' })
+        },
+        {
+          label: 'すべての変更を元に戻す',
+          click: () => send({ kind: 'review.applyAll', action: 'reject' })
+        },
+        { type: 'separator' },
+        {
+          label: '次の変更',
+          accelerator: 'Alt+CmdOrCtrl+N',
+          click: () => send({ kind: 'review.goto', direction: 1 })
+        },
+        {
+          label: '前の変更',
+          accelerator: 'Alt+CmdOrCtrl+P',
+          click: () => send({ kind: 'review.goto', direction: -1 })
+        },
+        { type: 'separator' },
+        {
+          label: 'コメントの表示',
+          accelerator: 'Alt+CmdOrCtrl+M',
+          click: () => send({ kind: 'review.toggleComments' })
+        }
       ]
     },
     {

@@ -3,6 +3,7 @@ import { createWindow, hardenNavigation } from './window'
 import { registerFileIpc } from './ipc/files'
 import { registerRecentIpc, setRecentChangeHandler } from './ipc/recent'
 import { registerPrintIpc } from './ipc/print'
+import { registerRecoveryIpc, clearRecoveryOnExit } from './ipc/recovery'
 import { buildMenu } from './menu'
 import { IPC } from '../shared/ipc'
 
@@ -63,6 +64,7 @@ if (!gotLock) {
     registerFileIpc()
     registerRecentIpc()
     registerPrintIpc()
+    registerRecoveryIpc()
     setRecentChangeHandler(() => void buildMenu())
     await buildMenu()
 
@@ -83,6 +85,11 @@ if (!gotLock) {
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
     })
+  })
+
+  // 正常終了。退避を消しておくと、次の起動で「前回は落ちた」と分かる
+  app.on('before-quit', () => {
+    void clearRecoveryOnExit()
   })
 
   app.on('window-all-closed', () => {

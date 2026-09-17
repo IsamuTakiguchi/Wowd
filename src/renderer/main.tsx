@@ -19,6 +19,14 @@ import './styles.css'
   return window.wowd.printToPdf({ ...payload, targetPath })
 }
 
+// E2E から自動保存を待たずに退避させるための入口。
+// 間隔 (既定 30 秒) を待つとテストが遅くなりすぎる。
+;(window as unknown as { __wowdSaveRecovery: unknown }).__wowdSaveRecovery =
+  async (): Promise<boolean> => {
+    const { saveRecoveryNow } = await import('./store/autosave')
+    return saveRecoveryNow()
+  }
+
 const container = document.getElementById('root')
 if (!container) throw new Error('#root が見つかりません')
 
