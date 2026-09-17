@@ -1,0 +1,436 @@
+/* Wowd の外観。Word のリボン UI に寄せた構成 */
+
+:root {
+  --ribbon-bg: #f3f3f3;
+  --ribbon-border: #d6d6d6;
+  --ribbon-accent: #2b579a;
+  --ribbon-hover: #e5eef9;
+  --paper: #ffffff;
+  --desk: #7a7a7a;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --warn-bg: #fff4ce;
+  --warn-border: #e6c200;
+  --error-bg: #fde7e9;
+  --error-border: #d13438;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Yu Gothic UI', 'Meiryo', 'Hiragino Kaku Gothic ProN', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--desk);
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── リボン ── */
+
+.ribbon {
+  flex: none;
+  background: var(--ribbon-bg);
+  border-bottom: 1px solid var(--ribbon-border);
+  user-select: none;
+}
+
+.ribbon-titlebar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 12px;
+}
+
+.ribbon-appname {
+  font-weight: 700;
+  color: var(--ribbon-accent);
+}
+
+.ribbon-filename {
+  color: var(--muted);
+}
+
+.ribbon-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.ribbon-tab {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text);
+}
+
+.ribbon-tab:hover {
+  background: var(--ribbon-hover);
+}
+
+.ribbon-tab.is-active {
+  border-bottom-color: var(--ribbon-accent);
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.ribbon-panel {
+  border-top: 1px solid var(--ribbon-border);
+  background: #fafafa;
+  min-height: 92px;
+}
+
+.ribbon-tab-body {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 4px 8px;
+  overflow-x: auto;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 10px;
+  border-right: 1px solid var(--ribbon-border);
+}
+
+.ribbon-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ribbon-group-label {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+.ribbon-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ribbon-button {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ribbon-button.is-wide {
+  min-width: 72px;
+}
+
+.ribbon-button:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+  border-color: #bcd3ee;
+}
+
+.ribbon-button.is-active {
+  background: #cfe0f5;
+  border-color: #9bbde5;
+}
+
+.ribbon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ribbon-select {
+  height: 24px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+.ribbon-readout {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ribbon-pending {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 260px;
+}
+
+.ribbon-pending-title {
+  font-weight: 700;
+  color: #9a6700;
+}
+
+.ribbon-pending ul {
+  margin: 2px 0;
+  padding-inline-start: 16px;
+}
+
+.ribbon-pending-note {
+  font-size: 10px;
+}
+
+/* ── 通知バナー ── */
+
+.banner {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.banner-warn {
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+}
+
+.banner-error {
+  background: var(--error-bg);
+  border-bottom: 1px solid var(--error-border);
+}
+
+.banner-detail {
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.banner button {
+  flex: none;
+  border: 1px solid #c8c8c8;
+  background: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+
+/* ── 本文 ── */
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.wowd-viewport {
+  flex: 1;
+  overflow: auto;
+  padding: 24px 0 64px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/*
+ * ページ分割はまだ無いので、幅と余白だけ本物の 1 枚の紙として描く。
+ * 印刷レイアウト (実際のページ分割) は Phase 5 で載せる。
+ */
+.wowd-page {
+  background: var(--paper);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  min-height: 400px;
+}
+
+.wowd-content {
+  outline: none;
+  color: #000;
+  /* 日本語の行分割と約物の詰めをブラウザ側の JLREQ 実装に任せる */
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: break-word;
+  text-spacing-trim: normal;
+  ruby-position: over;
+  ruby-align: space-around;
+}
+
+.wowd-content p,
+.wowd-content h1,
+.wowd-content h2,
+.wowd-content h3,
+.wowd-content h4,
+.wowd-content h5,
+.wowd-content h6 {
+  margin: 0;
+}
+
+/* リストの行頭記号。文書本体ではなく Decoration として重ねている */
+.wowd-list-marker {
+  white-space: pre;
+  user-select: none;
+}
+
+.wowd-tab {
+  display: inline-block;
+  white-space: pre;
+}
+
+/* 未対応要素。中身は保持されていて保存時に書き戻される */
+.wowd-raw {
+  background: #f0f0f0;
+  border: 1px dashed #b0b0b0;
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.wowd-raw-block {
+  display: block;
+  margin: 4px 0;
+  padding: 4px 8px;
+}
+
+.wowd-page-break,
+.wowd-section-break {
+  border-top: 1px dashed #999;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+  margin: 8px 0;
+  user-select: none;
+}
+
+/* ── 検索と置換 ── */
+
+.find-panel {
+  flex: none;
+  width: 300px;
+  background: #fafafa;
+  border-inline-start: 1px solid var(--ribbon-border);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.find-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.find-header button {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.find-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.find-field input {
+  height: 26px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.find-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.find-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.find-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.find-actions button {
+  flex: 1 1 auto;
+  min-width: 68px;
+  height: 26px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.find-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.find-status {
+  font-size: 11px;
+  color: var(--muted);
+  min-height: 14px;
+}
+
+/* ── ステータスバー ── */
+
+.statusbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 3px 12px;
+  background: var(--ribbon-accent);
+  color: #fff;
+  font-size: 11px;
+}
+
+.statusbar-spacer {
+  flex: 1;
+}
+
+.statusbar-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusbar-zoom input {
+  width: 110px;
+}
+
+/* ProseMirror の選択表示 */
+.ProseMirror-selectednode {
+  outline: 2px solid var(--ribbon-accent);
+}

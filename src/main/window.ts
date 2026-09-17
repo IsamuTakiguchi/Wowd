@@ -15,7 +15,7 @@ export function createWindow(): BrowserWindow {
     backgroundColor: '#f3f3f3',
     title: 'Wowd',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

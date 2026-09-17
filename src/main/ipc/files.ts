@@ -74,9 +74,11 @@ export function registerFileIpc(): void {
 
   ipcMain.handle(IPC.readTemplate, async (_e, id: TemplateId): Promise<Uint8Array> => {
     if (id !== 'blank-a4' && id !== 'blank-ja-b5') throw new Error('未知のテンプレートです')
+    // 開発時もビルド後も out/main/index.js から見た相対位置で解決する。
+    // app.getAppPath() はエントリのあるディレクトリを返すので使えない。
     const base = app.isPackaged
       ? join(process.resourcesPath, 'templates')
-      : join(app.getAppPath(), 'resources', 'templates')
+      : join(__dirname, '..', '..', 'resources', 'templates')
     return await readFile(join(base, `${id}.docx`))
   })
 

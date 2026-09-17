@@ -9,7 +9,14 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
-    build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } }
+    build: {
+      rollupOptions: {
+        input: { index: resolve('src/preload/index.ts') },
+        // sandbox: true の preload は CommonJS でなければ読み込まれない。
+        // package.json が type: module なので拡張子は .cjs にする必要がある。
+        output: { format: 'cjs', entryFileNames: '[name].cjs' }
+      }
+    }
   },
   renderer: {
     root: resolve('src/renderer'),

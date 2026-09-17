@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+      # フィクスチャとテンプレートは生成物なのでコミットしていない
+      - run: npm run fixtures
+      - run: npx tsx scripts/make-templates.ts
+
+      - run: npm test
+
+      - run: npm run build
+      # Electron の E2E には仮想ディスプレイが要る
+      - run: xvfb-run -a npx playwright test
