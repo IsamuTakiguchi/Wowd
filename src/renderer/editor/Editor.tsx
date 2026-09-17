@@ -1,15 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { buildExtensions } from './extensions'
 import { fromWowdDoc } from './serialize/fromWowdDoc'
 import { toWowdDoc } from './serialize/toWowdDoc'
 import { useDocumentStore } from '../store/document'
 import { useUiStore } from '../store/ui'
-import { paragraphAttrsToStyle } from './extensions/paragraphAttrs'
-import { fontsToCss } from './extensions/WRunProps'
+import { paragraphAttrsToStyle } from '@core/css/paragraphCss'
+import { fontsToCss } from '@core/css/runCss'
 import { halfPtToPt, twipToPt } from '@shared/units'
 import type { WowdResources, SectionProps } from '@core/model/types'
 import { defaultSection } from '@core/docx/read/section'
+import { buildStyleSheet } from '@core/css/styleSheet'
 
 /**
  * 文書本体のエディタ。
@@ -81,8 +82,15 @@ export function WowdEditor({
   // 文書の読み込みに失敗しても紙は描く。幅ゼロで何も見えなくなるのを避けるため
   const style = pageStyle(resources)
 
+  // styles.xml 由来の見た目。文書を読み込んだときだけ作り直す
+  const styleSheet = useMemo(
+    () => (resources ? buildStyleSheet(resources.styles) : ''),
+    [resources]
+  )
+
   return (
     <div className="wowd-viewport">
+      {styleSheet && <style data-wowd-styles="">{styleSheet}</style>}
       <div className="wowd-page" style={{ ...style, zoom: `${zoom}%` }} data-testid="wowd-page">
         <EditorContent editor={editor} />
       </div>

@@ -120,11 +120,10 @@ export function writeBlock(node: BlockNode, sections: Map<string, SectionProps>)
       return writeTable(node, sections)
     case 'pageBreak':
       return wrap('w:p', undefined, wrap('w:r', undefined, el('w:br', { 'w:type': 'page' })))
-    case 'sectionBreak': {
-      // 末尾のセクションは body 直下の w:sectPr として書く。ここでは何も出さず、
-      // writeBody 側でまとめて処理する
+    case 'sectionBreak':
+      // 段落が持つ途中のセクション区切り。実体は直前の段落の pPr に入っているので
+      // ここでは何も出さない
       return ''
-    }
     case 'rawBlock':
       return node.attrs.xml
   }
@@ -132,23 +131,17 @@ export function writeBlock(node: BlockNode, sections: Map<string, SectionProps>)
 
 /**
  * w:body を組み立てる。
- * 最後の sectionBreak だけは body 直下の w:sectPr にする必要があるため特別扱いする。
+ *
+ * 文書全体の最後のセクションは本文ツリーには入っていないので、
+ * trailingSectionId から引いて body の末尾に付け足す。
  */
-export function writeBody(doc: WowdDoc, sections: Map<string, SectionProps>): string {
-  const blocks = doc.content
-  let trailingSection: SectionProps | undefined
-
-  const body = blocks
-    .filter((b, i) => {
-      if (i === blocks.length - 1 && b.type === 'sectionBreak') {
-        trailingSection = sections.get(b.attrs.sectionId)
-        return false
-      }
-      return true
-    })
-    .map((b) => writeBlock(b, sections))
-    .join('')
-
-  const tail = trailingSection ? writeSectionProps(trailingSection) : ''
+export function writeBody(
+  doc: WowdDoc,
+  sections: Map<string, SectionProps>,
+  trailingSectionId: string | null
+): string {
+  const body = doc.content.map((b) => writeBlock(b, sections)).join('')
+  const trailing = trailingSectionId ? sections.get(trailingSectionId) : undefined
+  const tail = trailing ? writeSectionProps(trailing) : ''
   return wrap('w:body', undefined, body + tail)
 }

@@ -147,3 +147,30 @@ test('実ファイルを開いて本文・見出し・リストが表示され�
   // 未対応要素が無い文書なので警告バナーは出ない
   await expect(page.locator('.banner-warn')).toHaveCount(0)
 })
+
+test('styles.xml の書式が画面に反映される', async () => {
+  const fixture = join(process.cwd(), 'tests', 'fixtures', 'docx', '05-kitchen-sink.docx')
+  const bytes = Array.from(new Uint8Array(readFileSync(fixture)))
+
+  await page.evaluate(async (data) => {
+    const store = (
+      window as unknown as {
+        __wowdStore: {
+          getState: () => { openBytes: (b: Uint8Array, p: string | null) => Promise<void> }
+        }
+      }
+    ).__wowdStore
+    await store.getState().openBytes(new Uint8Array(data), null)
+  }, bytes)
+
+  const sizeOf = (selector: string): Promise<number> =>
+    page.locator(selector).first().evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize))
+
+  const title = await sizeOf('[data-style="Title"]')
+  const heading = await sizeOf('.wowd-content h1')
+  const body = await sizeOf('.wowd-content p:not([data-style])')
+
+  // ブラウザ既定ではなく styles.xml の指定が効いていること
+  expect(title).toBeGreaterThan(heading)
+  expect(heading).toBeGreaterThan(body)
+})

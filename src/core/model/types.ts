@@ -494,6 +494,11 @@ export interface WowdResources {
   contentTypes: string
   /** officeDocument パートの名前。通常 'word/document.xml' だが常にそうとは限らない */
   documentPartName: string
+  /**
+   * w:body 直下の w:sectPr (文書全体の最後のセクション) の id。
+   * Word はこれを画面に出さないので、本文ツリーにもブロックとして入れない。
+   */
+  trailingSectionId: string | null
 }
 
 /** アプリが保持する 1 文書ぶんの状態 */

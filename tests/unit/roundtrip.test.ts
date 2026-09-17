@@ -111,6 +111,29 @@ describe('readDocx', () => {
     expect(resources.numbering.abstract.size).toBeGreaterThan(0)
   })
 
+  it('文書末尾のセクションは本文ブロックにせず、資源側に保持する', () => {
+    for (const name of fixtureNames()) {
+      const { doc, resources } = readDocx(readFixture(name), name)
+      // Word は文書全体の最後のセクション区切りを画面に出さないので、
+      // 本文ツリーにも入れない。ただし設定は失わない
+      expect(resources.trailingSectionId, `${name}: 末尾セクションが無い`).not.toBeNull()
+      const lastBlock = doc.content[doc.content.length - 1]
+      expect(lastBlock?.type, `${name}: 末尾に区切りブロックが残っている`).not.toBe('sectionBreak')
+    }
+  })
+
+  it('末尾セクションの設定が保存で失われない', () => {
+    const before = readDocx(readFixture('03-styles.docx'))
+    const saved = writeDocx(before, before.pkg)
+    const after = readDocx(saved)
+
+    const b = before.resources.sections.find((s) => s.id === before.resources.trailingSectionId)
+    const a = after.resources.sections.find((s) => s.id === after.resources.trailingSectionId)
+    expect(a).toBeDefined()
+    expect(a!.pgSz).toEqual(b!.pgSz)
+    expect(a!.pgMar).toEqual(b!.pgMar)
+  })
+
   it('セクションのページサイズと余白を読む', () => {
     const { resources } = readDocx(readFixture('03-styles.docx'))
     const section = resources.sections[0]!

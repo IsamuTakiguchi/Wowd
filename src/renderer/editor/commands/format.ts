@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import type { RunProps, ParagraphAttrs, Justification } from '@core/model/types'
-import { DEFAULT_RUN_PROPS } from '../extensions/WRunProps'
+import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
 
 /** 選択範囲の現在の rPr を読む。複数マークがある場合は先頭のものを返す */
 export function currentRunProps(editor: Editor | null): RunProps | null {

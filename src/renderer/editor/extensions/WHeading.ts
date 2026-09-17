@@ -16,7 +16,8 @@ export const WHeading = Heading.extend({
     const style = paragraphAttrsToStyle(node.attrs)
     const attrs: Record<string, unknown> = { ...HTMLAttributes }
     if (style) attrs['style'] = style
-    if (node.attrs['pStyle']) attrs['data-style'] = node.attrs['pStyle']
+    // pStyle が無い見出しでもスタイル CSS が当たるよう level から補う
+    attrs['data-style'] = node.attrs['pStyle'] ?? `Heading${level}`
     return [`h${level}`, attrs, 0]
   }
 })

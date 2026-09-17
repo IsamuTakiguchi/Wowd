@@ -158,9 +158,9 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
 
   const root = parseXml(documentXml).find((n) => tagOf(n) === 'w:document')
   const body = findChild(root, 'w:body')
-  const { blocks, sections } = body
+  const { blocks, sections, trailingSectionId } = body
     ? readBody(body, ctx)
-    : { blocks: [], sections: [] }
+    : { blocks: [], sections: [], trailingSectionId: null }
 
   const doc: WowdDoc = { type: 'doc', content: blocks }
 
@@ -193,7 +193,8 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     rels,
     rawParts: pkg.parts,
     contentTypes: readPartText(pkg, '[Content_Types].xml') ?? '',
-    documentPartName: pkg.documentPartName
+    documentPartName: pkg.documentPartName,
+    trailingSectionId
   }
 
   return {

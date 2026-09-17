@@ -29,6 +29,8 @@ import { readSection } from './section'
 export interface ReadBodyResult {
   blocks: BlockNode[]
   sections: SectionProps[]
+  /** w:body 直下の w:sectPr の id。段落が持つ途中のセクション区切りとは別物 */
+  trailingSectionId: string | null
 }
 
 /**
@@ -40,6 +42,7 @@ export interface ReadBodyResult {
 export function readBody(body: XNode, ctx: RunContext): ReadBodyResult {
   const blocks: BlockNode[] = []
   const sections: SectionProps[] = []
+  let trailingSectionId: string | null = null
 
   const addSection = (node: XNode): string => {
     const id = `sect${sections.length + 1}`
@@ -63,8 +66,9 @@ export function readBody(body: XNode, ctx: RunContext): ReadBodyResult {
         blocks.push(readTable(child, ctx))
         break
       case 'w:sectPr':
-        // body 末尾のセクション。最後のセクション区切りとしてブロックにも残す
-        blocks.push({ type: 'sectionBreak', attrs: { sectionId: addSection(child) } })
+        // 文書全体の最後のセクション。Word は区切り記号を出さないので
+        // 本文ツリーには入れず、書き出し時に body 末尾へ戻す
+        trailingSectionId = addSection(child)
         break
       case 'w:bookmarkStart':
       case 'w:bookmarkEnd':
@@ -79,7 +83,7 @@ export function readBody(body: XNode, ctx: RunContext): ReadBodyResult {
     }
   }
 
-  return { blocks, sections }
+  return { blocks, sections, trailingSectionId }
 }
 
 function readTableWidth(node: XNode | undefined): TableWidth | null {

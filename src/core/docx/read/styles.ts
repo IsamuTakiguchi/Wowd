@@ -1,4 +1,4 @@
-import type { StyleTable, StyleDef, ParagraphAttrs } from '../../model/types'
+import type { StyleTable, StyleDef, ParagraphAttrs, RunProps } from '../../model/types'
 import {
   parseXml,
   type XNode,
@@ -109,6 +109,18 @@ export function effectiveParagraphProps(
   let out: Partial<ParagraphAttrs> = { ...(table.docDefaults.pPr ?? {}) }
   for (const style of resolveStyleChain(table, styleId)) {
     if (style.pPr) out = { ...out, ...stripNulls(style.pPr) }
+  }
+  return out
+}
+
+/**
+ * 文字スタイルの実効 rPr。docDefaults → basedOn 連鎖 → 自身 の順に重ねる。
+ * 段落スタイルの rPr もここで解決する (Word は段落スタイルにも rPr を持たせる)。
+ */
+export function effectiveRunProps(table: StyleTable, styleId: string | null): Partial<RunProps> {
+  let out: Partial<RunProps> = { ...(table.docDefaults.rPr ?? {}) }
+  for (const style of resolveStyleChain(table, styleId)) {
+    if (style.rPr) out = { ...out, ...stripNulls(style.rPr) }
   }
   return out
 }

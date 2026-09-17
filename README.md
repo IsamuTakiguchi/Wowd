@@ -15,6 +15,7 @@ Microsoft Word ライクな日本語文書エディタ (Electron デスクトッ
 | 元に戻す / やり直し | ✅ |
 | 検索と置換 (正規表現・全角半角・ひらがなカタカナの正規化) | ✅ |
 | 用紙サイズと向きの変更 | ✅ |
+| styles.xml のスタイル定義を画面に反映 | ✅ |
 | ページ表示・印刷 / PDF 出力 | 未実装 |
 | ルビ・文字数と行数 (原稿用紙) | 読み書きは対応済み、UI は未実装 |
 | 表・画像・ヘッダー/フッター・目次 | 読み書きは対応済み、UI は未実装 |
@@ -82,11 +83,19 @@ main が固まるとメニューバーもウィンドウ操作も全部固まる
 ## ディレクトリ
 
 ```
-src/core/      DOM 非依存・Electron 非依存。モデルと .docx の読み書き。単体テストはここが中心
+src/core/model/     文書モデル。全レイヤの契約
+src/core/docx/      .docx の読み書き。write/order.ts に WML の子要素順序テーブル
+src/core/numbering/ 番号書式 (日本語書式を含む) とリスト定義
+src/core/css/       OOXML → CSS の写像。DOM にも TipTap にも依存しない純粋関数
+src/core/search.ts  検索と置換
+
 src/main/      ウィンドウ、ネイティブメニュー、ファイル IO (アトミック書き込み)
 src/preload/   contextBridge。ipcRenderer を書いてよい唯一の場所
 src/renderer/  React + TipTap の UI
 ```
+
+`src/core/` は DOM にも Electron にも依存しない。単体テストはここが中心で、
+素の Node で動くので jsdom も Electron も要らない。
 
 ## 検証について
 

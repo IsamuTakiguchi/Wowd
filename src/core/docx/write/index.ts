@@ -28,7 +28,7 @@ export function documentRootAttrs(originalXml: string | null): string {
 
 export function writeDocumentXml(doc: WowdDocument, originalXml: string | null): string {
   const sections = new Map<string, SectionProps>(doc.resources.sections.map((s) => [s.id, s]))
-  const body = writeBody(doc.doc, sections)
+  const body = writeBody(doc.doc, sections, doc.resources.trailingSectionId)
   // 属性は生文字列として差し込む必要があるため、いったん目印を入れて置換する
   return XML_DECL + wrap('w:document', { __attrs: '' }, body).replace('__attrs=""', documentRootAttrs(originalXml))
 }
