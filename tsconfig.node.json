@@ -9,6 +9,7 @@
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
     "src/core/**/*.ts",
+    "src/renderer/editor/**/*.ts",
     "tests/unit/**/*.ts",
     "tests/e2e/**/*.ts"
   ],
@@ -25,7 +26,8 @@
     "baseUrl": ".",
     "paths": {
       "@core/*": ["src/core/*"],
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@renderer/*": ["src/renderer/*"]
     }
   }
 }

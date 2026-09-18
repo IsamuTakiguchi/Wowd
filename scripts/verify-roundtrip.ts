@@ -81,7 +81,10 @@ const plain = (d: { content: unknown[] }): string => {
 if (plain(second.doc) !== plain(doc.doc)) fail('本文テキストが変化した')
 else console.log(`  本文テキスト一致 (${plain(doc.doc).length} 文字)`)
 
-console.log('\n[5] document.xml の差分')
+// [5] は目視用。許容済みの差分 (xml:space の有無など) が常に出るので判定には使わない。
+// **要素や文字が落ちていないか**の自動判定は tests/unit/roundTripFidelity.test.ts にある。
+// ここの差分を人が読み飛ばしたせいで w:pPrChange の欠落を長く見逃した
+console.log('\n[5] document.xml の差分 (目視用。判定には使わない)')
 try {
   const a = join(outDir, 'a.xml')
   const b = join(outDir, 'b.xml')

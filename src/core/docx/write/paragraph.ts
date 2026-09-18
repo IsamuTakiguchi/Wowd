@@ -93,17 +93,6 @@ export function writeParagraphProps(
     if (section) add('w:sectPr', writeSectionProps(section))
   }
 
-  if (attrs.pPrChange) {
-    add(
-      'w:pPrChange',
-      el('w:pPrChange', {
-        'w:id': attrs.pPrChange.id,
-        'w:author': attrs.pPrChange.author,
-        'w:date': attrs.pPrChange.date
-      })
-    )
-  }
-
   for (const frag of splitFragments(attrs.rawPPr)) frags.push(frag)
 
   const body = emitOrdered(PPR_ORDER, frags, 'w:pPr')

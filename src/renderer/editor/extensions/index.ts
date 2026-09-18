@@ -2,7 +2,6 @@ import Document from '@tiptap/extension-document'
 import Text from '@tiptap/extension-text'
 import Bold from '@tiptap/extension-bold'
 import Italic from '@tiptap/extension-italic'
-import Underline from '@tiptap/extension-underline'
 import Strike from '@tiptap/extension-strike'
 import HardBreak from '@tiptap/extension-hard-break'
 import { CharacterCount, Dropcursor, Gapcursor, UndoRedo } from '@tiptap/extensions'
@@ -22,6 +21,7 @@ import { WImage } from './WImage'
 import { WTable, WTableRow, WTableCell, WTableHeader } from './WTable'
 import {
   DoubleStrike,
+  WUnderline,
   WLink,
   CommentMark,
   InsertionMark,
@@ -45,7 +45,7 @@ export function buildExtensions(): (Extension | Node | Mark)[] {
 
     Bold,
     Italic,
-    Underline,
+    WUnderline,
     Strike,
     WRunProps,
     // マークもノードと同じく、モデルが作りうるものはすべて登録する。

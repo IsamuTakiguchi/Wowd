@@ -89,11 +89,24 @@ function isInline(n: InlineNode | null): n is InlineNode {
   return n !== null
 }
 
+/**
+ * markToPM (fromWowdDoc) の逆。textStyle の入れ子をほどいてモデルの形に戻す。
+ * 中身が無ければマークごと落とす。空の w:rPr を書かないため
+ */
+function markFromPM(m: { type: string; attrs?: Record<string, unknown> }): Mark | null {
+  if (m.type === 'textStyle') {
+    const rp = m.attrs?.['runProps']
+    return rp ? ({ type: 'textStyle', attrs: rp } as unknown as Mark) : null
+  }
+  return { type: m.type, attrs: m.attrs } as unknown as Mark
+}
+
 function inlineFromPM(node: PMJson): InlineNode | null {
   if (node.type === 'text') {
     const text: TextNode = { type: 'text', text: node.text ?? '' }
     if (node.marks?.length) {
-      text.marks = node.marks.map((m) => ({ type: m.type, attrs: m.attrs }) as unknown as Mark)
+      const marks = node.marks.map(markFromPM).filter((m): m is Mark => m !== null)
+      if (marks.length) text.marks = marks
     }
     return text
   }

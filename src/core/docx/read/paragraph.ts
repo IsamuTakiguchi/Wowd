@@ -42,8 +42,7 @@ export const EMPTY_PARAGRAPH_ATTRS: ParagraphAttrs = {
   paraId: null,
   markRunProps: null,
   paraMarkRevision: null,
-  rawPPr: null,
-  pPrChange: null
+  rawPPr: null
 }
 
 const KNOWN_PPR = new Set([
@@ -58,8 +57,7 @@ const KNOWN_PPR = new Set([
   'w:pageBreakBefore',
   'w:snapToGrid',
   'w:sectPr',
-  'w:rPr',
-  'w:pPrChange'
+  'w:rPr'
 ])
 
 const JUSTIFICATIONS = new Set<string>(['left', 'center', 'right', 'both', 'distribute'])
@@ -185,9 +183,6 @@ export function readParagraphProps(pPr: XNode | undefined): ReadParagraphResult 
         attrs.markRunProps = { ...EMPTY_RUN_PROPS, rawRPr: serializeChildren(rest) }
         break
       }
-      case 'w:pPrChange':
-        attrs.pPrChange = readRevisionMeta(child)
-        break
     }
   }
   attrs.rawPPr = serializeChildren(leftovers)

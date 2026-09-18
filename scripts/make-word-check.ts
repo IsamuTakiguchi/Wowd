@@ -327,6 +327,12 @@ const EXPECTED: Record<string, RegExp[]> = {
     // 段落記号そのものの挿入
     /<w:pPr><w:rPr><w:ins /
   ],
+  '07-変更履歴-Wowd保存.docx': [
+    // 変更前の書式 (子の w:pPr / w:rPr) が残っていること。
+    // 属性だけの空要素で書き戻すと Word が修復を出す
+    /<w:pPrChange [^>]*><w:pPr>/,
+    /<w:rPrChange [^>]*><w:rPr>/
+  ],
   '11-コメント.docx': [/<w:commentRangeStart/, /<w:commentReference/],
   '12-画像.docx': [/<w:drawing>/, /xmlns:wp=/, /r:embed="/],
   '13-ヘッダーフッター.docx': [/<w:headerReference/, /<w:footerReference/],
@@ -483,6 +489,16 @@ async function main(): Promise<void> {
       '05-原稿用紙-Wowd保存.docx'
     )
     await roundTripPair(page, '15-headers.docx', '06-ヘッダー-元.docx', '06-ヘッダー-Wowd保存.docx')
+    // 書式の変更履歴 (w:pPrChange / w:rPrChange)。Wowd では作れないが、
+    // 受け取った文書には入ってくる。以前は変更前の書式を読み捨てて
+    // 属性だけの空要素として書き戻しており、規格違反だった。
+    // ここが直っているかは実機 Word でしか最終確認できない
+    await roundTripPair(
+      page,
+      '10-revisions.docx',
+      '07-変更履歴-元.docx',
+      '07-変更履歴-Wowd保存.docx'
+    )
 
     await trackChanges(page)
     await comments(page)

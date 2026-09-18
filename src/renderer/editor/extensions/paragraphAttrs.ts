@@ -24,7 +24,6 @@ export const DEFAULT_PARAGRAPH_ATTRS: ParagraphAttrs = {
   markRunProps: null,
   paraMarkRevision: null,
   rawPPr: null,
-  pPrChange: null
 }
 
 /** JSON 由来の値をそのまま持ち回すだけの属性 (HTML には出さない) */
@@ -63,7 +62,6 @@ export function paragraphAttributeSpec() {
       keepOnSplit: false
     },
     rawPPr: passthrough<string | null>(null),
-    pPrChange: passthrough<ParagraphAttrs['pPrChange']>(null)
   }
 }
 

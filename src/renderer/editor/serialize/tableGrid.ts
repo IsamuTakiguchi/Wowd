@@ -126,8 +126,7 @@ function continuationOf(source: TableCellNode, colspan: number): TableCellNode {
           paraId: null,
           markRunProps: null,
           paraMarkRevision: null,
-          rawPPr: null,
-          pPrChange: null
+          rawPPr: null
         }
       }
     ]

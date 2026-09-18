@@ -1,4 +1,4 @@
-import type { WowdDoc, BlockNode, InlineNode, ParagraphNode } from '@core/model/types'
+import type { WowdDoc, BlockNode, InlineNode, ParagraphNode, Mark } from '@core/model/types'
 import { headingLevelOf } from './headingStyle'
 import { stripMergeContinuations } from './tableGrid'
 
@@ -56,20 +56,27 @@ function paragraphToPM(node: ParagraphNode): PMJson {
   return { type: 'paragraph', attrs, ...(content.length ? { content } : {}) }
 }
 
+/**
+ * マークの属性をスキーマの形に合わせる。
+ *
+ * **ProseMirror は宣言の無い属性を黙って捨てる。** モデルとスキーマで
+ * 形が違うと、その属性は setContent の時点で消える。
+ * textStyle だけ入れ子 (runProps 1 個) で宣言しているので、ここで包む。
+ * 包み忘れると w:rFonts や w:sz が「開いて保存しただけ」で失われる。
+ */
+function markToPM(m: Mark): { type: string; attrs?: Record<string, unknown> } {
+  if (m.type === 'textStyle') return { type: m.type, attrs: { runProps: m.attrs } }
+  return 'attrs' in m
+    ? { type: m.type, attrs: m.attrs as unknown as Record<string, unknown> }
+    : { type: m.type }
+}
+
 function inlineToPM(node: InlineNode): PMJson {
   if (node.type === 'text') {
     return {
       type: 'text',
       text: node.text,
-      ...(node.marks?.length
-        ? {
-            marks: node.marks.map((m) =>
-              'attrs' in m
-                ? { type: m.type, attrs: m.attrs as unknown as Record<string, unknown> }
-                : { type: m.type }
-            )
-          }
-        : {})
+      ...(node.marks?.length ? { marks: node.marks.map(markToPM) } : {})
     }
   }
   if (node.type === 'ruby') {

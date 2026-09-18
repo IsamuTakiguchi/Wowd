@@ -99,10 +99,17 @@ export interface ParagraphAttrs {
    * 段落の分割と結合だけが履歴に残らず、元に戻せなくなる。
    */
   paraMarkRevision: { kind: 'ins' | 'del'; meta: RevisionMeta } | null
-  /** 未対応の w:pPr 子要素を元の XML のまま退避する */
+  /**
+   * 未対応の w:pPr 子要素を元の XML のまま退避する。
+   *
+   * w:pPrChange (段落書式の変更履歴) もここに入る。
+   * 以前は {id, author, date} だけモデル化していたが、
+   * CT_PPrChange は子の w:pPr (変更前の書式) を必須とするため、
+   * 属性だけ書き戻すと**規格違反になって Word が修復を出す**。
+   * 変更前の書式そのものも落ちていた。
+   * w:rPrChange と同じく原文のまま退避する方が正しい。
+   */
   rawPPr: string | null
-  /** w:pPrChange (段落書式の変更履歴)。Phase 9 まで読み取り専用で往復させる */
-  pPrChange: RevisionMeta | null
 }
 
 export interface ParagraphNode {

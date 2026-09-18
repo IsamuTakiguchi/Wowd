@@ -209,7 +209,7 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
 
 ## 検証について
 
-`.docx` の忠実性は 3 つの自動テストで担保している。
+`.docx` の忠実性は次の自動テストで担保している。
 
 1. 書き出したパッケージのパート一覧が元の上位集合であること
 2. 書き換えていないパートがバイト一致すること
@@ -217,9 +217,15 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
 4. **ECMA-376 の公式 XSD に当てて規格違反が無いこと**
 5. **パッケージ全体の参照グラフが閉じていること**
    (`r:id` の解決・Content_Types の被覆・コメント範囲の対応)
+6. **要素と文字が 1 つも減らないこと** (`tests/unit/roundTripFidelity.test.ts`)
+
+6 が要るのは、**3 の冪等性だけでは情報の欠落を捕まえられない**ため。
+読み取りが落とし、書き出しも出さない要素は 2 回目もやはり落ちるので、
+モデルは一致して素通りする。実際に `w:pPrChange` がこの穴を通っていた。
 
 加えて、**実際の利用経路 (開く → エディタ → 保存 → 開き直す) でも**検証している
-(`tests/unit/schemaCoverage.test.ts` と `tests/e2e/editorRoundtrip.spec.ts`)。
+(`tests/unit/schemaCoverage.test.ts`、`tests/unit/editorRoundTrip.test.ts`、
+`tests/e2e/editorRoundtrip.spec.ts`)。
 
 モデル層のテストだけではこの経路を通らないため、次の種類のバグを検出できない。
 どちらも実際に起きた:
@@ -229,6 +235,10 @@ src/renderer/editor/pagination/ 実測ベースのページ分割
   (表・画像・ルビ・フィールド・変更履歴・コメントで発生)
 - prosemirror-tables が「列数が合わない」と判断して勝手にセルを足し、
   開いて保存しただけで表の構造が変わる
+- **ProseMirror がスキーマに宣言の無いマーク属性を黙って捨てる。**
+  モデルとスキーマで属性の形が違うと、開いて保存しただけで書式が消える
+  (フォント・文字サイズ・下線の種類と色で発生)。
+  Word は修復ダイアログを出さないので、実機で開いても気づけない
 
 ### 往復テストでは原理的に検出できない壊れ方
 

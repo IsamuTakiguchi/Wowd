@@ -229,10 +229,32 @@ function revisionsDoc(): string {
     text('段落記号が削除された段落。') +
     `</w:p>`
 
+  // 書式の変更履歴。**中身のある子要素を持つのが要点**。
+  // CT_PPrChange / CT_RPrChange は変更前の書式 (w:pPr / w:rPr) を必須とする。
+  // 属性だけの空要素として書き戻すと規格違反になり、Word が修復を出す。
+  // ここを往復させないと、その退行はどのテストにも映らない
+  const formatChangedPara =
+    `<w:p><w:pPr><w:jc w:val="left"/>` +
+    `<w:pPrChange w:id="105" w:author="校閲者A" w:date="2026-01-05T00:00:00Z">` +
+    `<w:pPr><w:pStyle w:val="Heading1"/><w:jc w:val="center"/></w:pPr>` +
+    `</w:pPrChange></w:pPr>` +
+    text('段落の書式が変更された段落。') +
+    `</w:p>`
+  const formatChangedRun =
+    `<w:p>` +
+    `<w:r><w:rPr><w:i/>` +
+    `<w:rPrChange w:id="106" w:author="校閲者B" w:date="2026-01-06T00:00:00Z">` +
+    `<w:rPr><w:b/></w:rPr>` +
+    `</w:rPrChange></w:rPr>` +
+    `<w:t xml:space="preserve">文字の書式が変更された箇所</w:t></w:r>` +
+    `</w:p>`
+
   return (
     para(text('変更履歴つきの段落: '), ins, text(' と '), del, text('。')) +
     paraInserted +
     paraDeleted +
+    formatChangedPara +
+    formatChangedRun +
     `<w:p>` +
     `<w:commentRangeStart w:id="1"/>` +
     text('コメントが付いた範囲') +

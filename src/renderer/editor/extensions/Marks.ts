@@ -1,4 +1,4 @@
-import { Mark, mergeAttributes } from '@tiptap/core'
+import { Mark, mergeAttributes, type CommandProps } from '@tiptap/core'
 import type { RevisionMeta } from '@core/model/types'
 import { authorColor } from '@core/revisions/authorColor'
 
@@ -26,6 +26,81 @@ export const DoubleStrike = Mark.create({
       mergeAttributes(HTMLAttributes, {
         'data-double': '',
         style: 'text-decoration:line-through double'
+      }),
+      0
+    ]
+  }
+})
+
+/**
+ * w:u — 下線。**属性を持つ**ところが TipTap 既定の下線と違う。
+ *
+ * 既定の Underline は属性を持たないので、二重下線 (w:val="double") や
+ * 下線の色が setContent の時点で落ちる。Word は修復を出さず、
+ * 開いて保存しただけで黙って書式が失われる。
+ */
+export const WUnderline = Mark.create({
+  name: 'underline',
+
+  addAttributes() {
+    return {
+      val: { default: 'single', parseHTML: (el: HTMLElement) => el.dataset['val'] ?? 'single' },
+      color: { default: null, parseHTML: (el: HTMLElement) => el.dataset['color'] ?? null }
+    }
+  },
+
+  parseHTML() {
+    return [{ tag: 'u' }]
+  },
+
+  addCommands() {
+    // 既定の Underline を置き換えたので、同じコマンドを自分で用意する。
+    // リボンの下線ボタンと Ctrl+U がこれを呼ぶ
+    const name = this.name
+    return {
+      setUnderline:
+        () =>
+        ({ commands }: { commands: CommandProps['commands'] }) =>
+          commands.setMark(name),
+      toggleUnderline:
+        () =>
+        ({ commands }: { commands: CommandProps['commands'] }) =>
+          commands.toggleMark(name),
+      unsetUnderline:
+        () =>
+        ({ commands }: { commands: CommandProps['commands'] }) =>
+          commands.unsetMark(name)
+    } as never
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-u': () => this.editor.commands.toggleMark(this.name),
+      'Mod-U': () => this.editor.commands.toggleMark(this.name)
+    }
+  },
+
+  renderHTML({ HTMLAttributes, mark }) {
+    const val = (mark.attrs['val'] as string) ?? 'single'
+    const color = mark.attrs['color'] as string | null
+    // Word の下線の種類を CSS の近い表現に写す。無い種類は実線に落とす
+    const style =
+      val === 'double'
+        ? 'double'
+        : val === 'dotted' || val === 'dottedHeavy'
+          ? 'dotted'
+          : val === 'dash' || val === 'dashedHeavy' || val === 'dashLong'
+            ? 'dashed'
+            : val === 'wave' || val === 'wavyHeavy' || val === 'wavyDouble'
+              ? 'wavy'
+              : 'solid'
+    const decoration = `underline ${style}` + (color ? ` #${color}` : '')
+    return [
+      'u',
+      mergeAttributes(HTMLAttributes, {
+        'data-val': val,
+        ...(color ? { 'data-color': color } : {}),
+        style: `text-decoration:${decoration}`
       }),
       0
     ]
