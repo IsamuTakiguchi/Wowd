@@ -2,6 +2,7 @@ import type { ParagraphNode, ParagraphAttrs, SectionProps } from '../../model/ty
 import { el, wrap, valEl, type AttrMap } from '../xml'
 import { PPR_ORDER, emitOrdered, splitFragments, type OrderedFragment } from './order'
 import { writeInlineRuns, writeRunProps, emptyMarkSet } from './run'
+import type { CommentScope } from './commentScope'
 import { writeSectionProps } from './section'
 
 function indAttrs(ind: NonNullable<ParagraphAttrs['ind']>): AttrMap {
@@ -99,9 +100,13 @@ export function writeParagraphProps(
   return body ? wrap('w:pPr', undefined, body) : ''
 }
 
-export function writeParagraph(node: ParagraphNode, sections: Map<string, SectionProps>): string {
+export function writeParagraph(
+  node: ParagraphNode,
+  sections: Map<string, SectionProps>,
+  scope?: CommentScope
+): string {
   const pPr = writeParagraphProps(node.attrs, sections)
-  const content = writeInlineRuns(node.content ?? [])
+  const content = writeInlineRuns(node.content ?? [], false, scope)
   const attrs: AttrMap = node.attrs.paraId ? { 'w14:paraId': node.attrs.paraId } : {}
   return wrap('w:p', attrs, pPr + content)
 }

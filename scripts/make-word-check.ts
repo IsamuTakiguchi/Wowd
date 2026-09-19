@@ -14,7 +14,7 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { unzipSync, strFromU8 } from 'fflate'
+import { unzipSync, zipSync, strFromU8 } from 'fflate'
 import { readDocx } from '../src/core/docx/read'
 import { openPackage } from '../src/core/docx/package'
 import { validatePackage, errorsOnly, formatProblems } from '../src/core/docx/validate'
@@ -522,7 +522,27 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
+  packZip()
   console.log(`\n完了: ${OUT_DIR}`)
+}
+
+/**
+ * 渡す用の zip をまとめる。
+ *
+ * **`zip` コマンドは使わない。** 既定では UTF-8 のバイト列を入れておきながら
+ * 汎用フラグの bit 11 (UTF-8 の印) を立てないので、Windows のエクスプローラーが
+ * 名前を CP932 として読み、日本語のファイル名が全部文字化けする。
+ * fflate は非 ASCII の名前にこの印を立てる。
+ */
+function packZip(): void {
+  const files: Record<string, Uint8Array> = {}
+  for (const name of readdirSync(OUT_DIR).sort()) {
+    if (name.endsWith('.zip')) continue
+    files[name] = new Uint8Array(readFileSync(join(OUT_DIR, name)))
+  }
+  const out = join(OUT_DIR, 'wowd-word-check.zip')
+  writeFileSync(out, zipSync(files))
+  console.log(`\n  ${'wowd-word-check.zip'}  (${Object.keys(files).length} ファイル)`)
 }
 
 void main().catch((err: unknown) => {

@@ -242,6 +242,47 @@ export function validatePackage(pkg: DocxPackage): PackageProblem[] {
       }
     }
 
+    /**
+     * 1 つのコメントに錨は 1 つだけ。
+     *
+     * 複数段落にまたがるコメントを段落ごとに開いて閉じると、同じ w:id の
+     * commentRangeStart / End / commentReference が何組も出る。
+     * Word は 1 つの id に 1 つの範囲しか想定しないので修復を出す。
+     * **XSD は通ってしまう** (どちらも出現回数に制約が無い) ので、ここで見る。
+     */
+    const starts = attrValues(documentXml, 'w:commentRangeStart', 'w:id')
+    const ends = attrValues(documentXml, 'w:commentRangeEnd', 'w:id')
+    const refs = attrValues(documentXml, 'w:commentReference', 'w:id')
+    const countOf = (list: string[], id: string): number => list.filter((x) => x === id).length
+    for (const id of new Set([...starts, ...ends, ...refs])) {
+      for (const [label, list] of [
+        ['w:commentRangeStart', starts],
+        ['w:commentRangeEnd', ends],
+        ['w:commentReference', refs]
+      ] as const) {
+        const n = countOf(list, id)
+        if (n > 1) {
+          add('error', pkg.documentPartName, `コメント ${id} の ${label} が ${n} 個あります`)
+        }
+      }
+    }
+
+    /**
+     * comments.xml にあるのに本文から参照されないコメントは錨が無い。
+     *
+     * 返信は本文に印を持たないので落としやすい。実際に落としていた。
+     * 錨の無いコメントは Word が壊れた文書として扱う。
+     */
+    for (const id of new Set(commentIds)) {
+      if (!refs.includes(id)) {
+        add(
+          'error',
+          'word/comments.xml',
+          `コメント ${id} が本文から参照されていません (w:commentReference が無い)`
+        )
+      }
+    }
+
     // ── 5. ブックマーク ──
     checkRangePairs(
       documentXml,

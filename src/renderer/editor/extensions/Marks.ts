@@ -32,6 +32,18 @@ export const DoubleStrike = Mark.create({
   }
 })
 
+// 既定の Underline 拡張を外したので、そのコマンドの型宣言も一緒に消える。
+// リボンの下線ボタンが呼ぶので、ここで宣言し直す
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    wowdUnderline: {
+      setUnderline: () => ReturnType
+      toggleUnderline: () => ReturnType
+      unsetUnderline: () => ReturnType
+    }
+  }
+}
+
 /**
  * w:u — 下線。**属性を持つ**ところが TipTap 既定の下線と違う。
  *

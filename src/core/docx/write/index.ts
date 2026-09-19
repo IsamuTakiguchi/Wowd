@@ -45,7 +45,7 @@ export function documentRootAttrs(originalXml: string | null): string {
 
 export function writeDocumentXml(doc: WowdDocument, originalXml: string | null): string {
   const sections = new Map<string, SectionProps>(doc.resources.sections.map((s) => [s.id, s]))
-  const body = writeBody(doc.doc, sections, doc.resources.trailingSectionId)
+  const body = writeBody(doc.doc, sections, doc.resources.trailingSectionId, doc.resources.comments)
   // 段落に w14:paraId を書くので、宣言と mc:Ignorable を揃える
   const attrs = ensureIgnorable(documentRootAttrs(originalXml), ['w14'])
   // 属性は生文字列として差し込む必要があるため、いったん目印を入れて置換する

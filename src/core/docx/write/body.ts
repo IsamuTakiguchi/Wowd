@@ -6,9 +6,11 @@ import type {
   Borders,
   Margins,
   SectionProps,
-  WowdDoc
+  WowdDoc,
+  CommentRecord
 } from '../../model/types'
 import { el, wrap, valEl, type AttrMap } from '../xml'
+import { buildCommentScope, replyTable, type CommentScope } from './commentScope'
 import {
   TBLPR_ORDER,
   TCPR_ORDER,
@@ -60,7 +62,11 @@ function writeMargins(tag: string, margins: Margins | null): string {
   return inner ? wrap(tag, undefined, inner) : ''
 }
 
-function writeTable(table: TableNode, sections: Map<string, SectionProps>): string {
+function writeTable(
+  table: TableNode,
+  sections: Map<string, SectionProps>,
+  scope?: CommentScope
+): string {
   const frags: OrderedFragment[] = []
   const add = (tag: string, xml: string): void => {
     if (xml) frags.push({ tag, xml })
@@ -84,7 +90,7 @@ function writeTable(table: TableNode, sections: Map<string, SectionProps>): stri
   const rows = table.content
     .map((row) => {
       const trPr = writeRowProps(row)
-      const cells = row.content.map((cell) => writeCell(cell, sections)).join('')
+      const cells = row.content.map((cell) => writeCell(cell, sections, scope)).join('')
       return wrap('w:tr', undefined, trPr + cells)
     })
     .join('')
@@ -105,7 +111,11 @@ function writeRowProps(row: TableNode['content'][number]): string {
   return inner ? wrap('w:trPr', undefined, inner) : ''
 }
 
-function writeCell(cell: TableCellNode, sections: Map<string, SectionProps>): string {
+function writeCell(
+  cell: TableCellNode,
+  sections: Map<string, SectionProps>,
+  scope?: CommentScope
+): string {
   const frags: OrderedFragment[] = []
   const add = (tag: string, xml: string): void => {
     if (xml) frags.push({ tag, xml })
@@ -124,18 +134,22 @@ function writeCell(cell: TableCellNode, sections: Map<string, SectionProps>): st
   for (const frag of splitFragments(cell.attrs.rawTcPr)) frags.push(frag)
 
   const tcPr = wrap('w:tcPr', undefined, emitOrdered(TCPR_ORDER, frags, 'w:tcPr'))
-  const content = cell.content.map((b) => writeBlock(b, sections)).join('')
+  const content = cell.content.map((b) => writeBlock(b, sections, scope)).join('')
   // Word のセルは必ず段落で終わる必要がある
   const body = content || wrap('w:p', undefined, '')
   return wrap('w:tc', undefined, tcPr + body)
 }
 
-export function writeBlock(node: BlockNode, sections: Map<string, SectionProps>): string {
+export function writeBlock(
+  node: BlockNode,
+  sections: Map<string, SectionProps>,
+  scope?: CommentScope
+): string {
   switch (node.type) {
     case 'paragraph':
-      return writeParagraph(node, sections)
+      return writeParagraph(node, sections, scope)
     case 'table':
-      return writeTable(node, sections)
+      return writeTable(node, sections, scope)
     case 'pageBreak':
       return wrap('w:p', undefined, wrap('w:r', undefined, el('w:br', { 'w:type': 'page' })))
     case 'sectionBreak':
@@ -149,7 +163,9 @@ export function writeBlock(node: BlockNode, sections: Map<string, SectionProps>)
 
 /** ブロックの並びをそのまま並べる。ヘッダー / フッターのパートで使う */
 export function writeBlocks(blocks: BlockNode[], sections: Map<string, SectionProps>): string {
-  return blocks.map((b) => writeBlock(b, sections)).join('')
+  // ヘッダー / フッターはそれ自体で閉じた範囲なので、ここで作って使い切る
+  const scope = buildCommentScope(blocks)
+  return blocks.map((b) => writeBlock(b, sections, scope)).join('')
 }
 
 /**
@@ -161,9 +177,13 @@ export function writeBlocks(blocks: BlockNode[], sections: Map<string, SectionPr
 export function writeBody(
   doc: WowdDoc,
   sections: Map<string, SectionProps>,
-  trailingSectionId: string | null
+  trailingSectionId: string | null,
+  comments: Map<string, CommentRecord> = new Map()
 ): string {
-  const body = doc.content.map((b) => writeBlock(b, sections)).join('')
+  // コメント範囲は段落をまたぐので、**本文全体で 1 つの状態**を共有する。
+  // 返信のコメントは本文に印を持たないため、親の範囲に相乗りさせる
+  const scope = buildCommentScope(doc.content, replyTable(comments))
+  const body = doc.content.map((b) => writeBlock(b, sections, scope)).join('')
   const trailing = trailingSectionId ? sections.get(trailingSectionId) : undefined
   const tail = trailing ? writeSectionProps(trailing) : ''
   return wrap('w:body', undefined, body + tail)

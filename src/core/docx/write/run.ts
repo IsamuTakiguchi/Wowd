@@ -2,6 +2,12 @@ import type { Mark, RunProps, RunFonts, InlineNode, TextNode, RevisionMeta } fro
 import { el, wrap, textEl, valEl, type AttrMap } from '../xml'
 import { RPR_ORDER, emitOrdered, splitFragments, type OrderedFragment } from './order'
 import { writeDrawing } from './drawing'
+import {
+  buildCommentScope,
+  consumeComments,
+  anchoredIds,
+  type CommentScope
+} from './commentScope'
 
 export interface MarkSet {
   bold: boolean
@@ -126,33 +132,41 @@ export function writeRunProps(set: MarkSet): string {
  * 連続するインラインノードをできるだけ少ない w:r にまとめて出力する。
  * マークが同じ隣接ノードは 1 つのランに入れる (Word が吐く形に近く、差分も小さい)。
  */
-export function writeInlineRuns(nodes: InlineNode[], inDeletion = false): string {
+export function writeInlineRuns(
+  nodes: InlineNode[],
+  inDeletion = false,
+  outer?: CommentScope
+): string {
   let out = ''
   let i = 0
   /**
-   * いま開いているコメント範囲。
+   * コメント範囲の状態。**文書全体で共有する** (commentScope.ts)。
    *
-   * コメントはランを包むのではなく、範囲の前後に印を置く形で表される。
-   * ここで開閉を追わないと、読み込めても保存で消えてしまう。
+   * 段落ごとに作り直すと、複数段落にまたがるコメントが段落ごとに
+   * 開いて閉じ、同じ w:id の範囲が何組も出て Word が修復を出す。
+   * 呼び出し元が渡さなかったときだけ、この呼び出しぶんで閉じた状態を作る。
    */
-  let openComments: string[] = []
+  const scope = outer ?? buildCommentScope([{ type: 'paragraph', attrs: null as never, content: nodes }])
 
-  const syncComments = (next: string[]): string => {
+  const syncComments = (raw: string[]): string => {
+    const next = anchoredIds(scope, raw)
     let marks = ''
-    // 閉じるものを先に出す
-    for (const id of openComments) {
-      if (!next.includes(id)) marks += el('w:commentRangeEnd', { 'w:id': id })
-    }
+    // 後にもう出てこない id だけ閉じる。残っているものは段落をまたいで開けておく
+    const closing = scope.open.filter(
+      (id) => !next.includes(id) && (scope.remaining.get(id) ?? 0) === 0
+    )
+    for (const id of closing) marks += el('w:commentRangeEnd', { 'w:id': id })
     // 参照は範囲を閉じた直後に置く
-    for (const id of openComments) {
-      if (!next.includes(id)) {
-        marks += wrap('w:r', undefined, el('w:commentReference', { 'w:id': id }))
-      }
+    for (const id of closing) {
+      marks += wrap('w:r', undefined, el('w:commentReference', { 'w:id': id }))
     }
     for (const id of next) {
-      if (!openComments.includes(id)) marks += el('w:commentRangeStart', { 'w:id': id })
+      if (!scope.open.includes(id)) {
+        marks += el('w:commentRangeStart', { 'w:id': id })
+        scope.open.push(id)
+      }
     }
-    openComments = next
+    scope.open = scope.open.filter((id) => !closing.includes(id))
     return marks
   }
 
@@ -171,16 +185,19 @@ export function writeInlineRuns(nodes: InlineNode[], inDeletion = false): string
       }
       out += syncComments(set.commentIds)
       out += wrapRevision(set, () => writeTextRun(group, set, inDeletion || set.deletion != null))
+      // 出し終えたぶんを残数から引く。0 になった id が次の sync で閉じる
+      consumeComments(scope, set.commentIds, group.length)
       i = j
       continue
     }
 
     out += syncComments([])
-    out += writeInlineOther(node)
+    out += writeInlineOther(node, scope)
     i++
   }
 
-  // 段落の終わりで開いたままのものを閉じる
+  // 段落の終わりでは「もう出てこない」ものだけ閉じる。
+  // まだ後に出る id は開いたまま次の段落へ持ち越す
   out += syncComments([])
   return out
 }
@@ -233,7 +250,7 @@ function wrapRevision(set: MarkSet, render: () => string): string {
   return inner
 }
 
-function writeInlineOther(node: InlineNode): string {
+function writeInlineOther(node: InlineNode, scope: CommentScope): string {
   switch (node.type) {
     case 'wTab':
       return wrap('w:r', undefined, el('w:tab'))
@@ -257,7 +274,7 @@ function writeInlineOther(node: InlineNode): string {
         wrap('w:r', undefined, textEl('w:t', node.attrs.cachedText))
       )
     case 'ruby':
-      return writeRuby(node)
+      return writeRuby(node, scope)
     case 'image':
       // 原文を保持しているならそれを書き戻す。
       // 回り込みや効果まで含めて完全に再現でき、情報が落ちない。
@@ -278,7 +295,7 @@ function writeInlineOther(node: InlineNode): string {
   }
 }
 
-function writeRuby(node: Extract<InlineNode, { type: 'ruby' }>): string {
+function writeRuby(node: Extract<InlineNode, { type: 'ruby' }>, scope: CommentScope): string {
   const a = node.attrs
   const rubyPr = wrap(
     'w:rubyPr',
@@ -298,7 +315,7 @@ function writeRuby(node: Extract<InlineNode, { type: 'ruby' }>): string {
     wrap('w:r', undefined, writeRunProps(rtSet) + textEl('w:t', a.rt))
   )
 
-  const base = wrap('w:rubyBase', undefined, writeInlineRuns(node.content))
+  const base = wrap('w:rubyBase', undefined, writeInlineRuns(node.content, false, scope))
   // w:ruby はラン内容 (EG_RunInnerContent) なので w:r で包む。
   // 段落直下に置くと Word が読めないファイルになる
   return wrap('w:r', undefined, wrap('w:ruby', undefined, rubyPr + rt + base))

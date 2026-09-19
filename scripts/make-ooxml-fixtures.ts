@@ -271,12 +271,19 @@ function threadedCommentsDoc(): {
   comments: string
   extended: string
 } {
+  // 返信 (id=1) にも範囲と参照が要る。**Word はこう書く。**
+  // comments.xml にあるのに本文から参照されないコメントは錨の無いコメントで、
+  // Word は壊れた文書として扱う。以前はここを親のぶんだけにしていたため、
+  // 「返信に参照が無い」という不具合がフィクスチャに映らなかった
   const body =
     `<w:p>` +
     `<w:commentRangeStart w:id="0"/>` +
+    `<w:commentRangeStart w:id="1"/>` +
     text('コメントが付いた最初の範囲') +
     `<w:commentRangeEnd w:id="0"/>` +
     `<w:r><w:commentReference w:id="0"/></w:r>` +
+    `<w:commentRangeEnd w:id="1"/>` +
+    `<w:r><w:commentReference w:id="1"/></w:r>` +
     `</w:p>` +
     `<w:p>` +
     `<w:commentRangeStart w:id="2"/>` +
