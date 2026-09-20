@@ -36,6 +36,14 @@ export interface UiState {
   currentPage: number
   /** 文書全体のページ数 */
   pageCount: number
+  /**
+   * 紙からはみ出した表の数。
+   *
+   * Wowd は表をページ間で分割しないので、1 ページに収まらない表は
+   * 紙からはみ出す。黙って溢れさせると「Wowd が表を壊した」に見えるので、
+   * 出ていることを画面で伝える。
+   */
+  overflowingTables: number
   dialog: DialogKind
   /** コメントペインを開いているか */
   commentsOpen: boolean
@@ -53,6 +61,7 @@ export interface UiState {
   setViewMode: (mode: ViewMode) => void
   toggleGrid: (on?: boolean) => void
   setPageInfo: (current: number, count: number) => void
+  setOverflowingTables: (n: number) => void
   openDialog: (kind: DialogKind) => void
   toggleComments: (open?: boolean) => void
   setTracking: (on?: boolean) => void
@@ -92,6 +101,7 @@ export const useUiStore = create<UiState>((set) => ({
   showGrid: false,
   currentPage: 1,
   pageCount: 1,
+  overflowingTables: 0,
   dialog: null,
   commentsOpen: false,
   tracking: false,
@@ -113,6 +123,8 @@ export const useUiStore = create<UiState>((set) => ({
     set({ author })
   },
   setRevisionDisplay: (revisionDisplay) => set({ revisionDisplay }),
+  setOverflowingTables: (n) =>
+    set((s) => (s.overflowingTables === n ? s : { overflowingTables: n })),
   setPageInfo: (currentPage, pageCount) =>
     set((s) =>
       s.currentPage === currentPage && s.pageCount === pageCount ? s : { currentPage, pageCount }

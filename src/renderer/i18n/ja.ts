@@ -91,6 +91,9 @@ export const ja = {
     openError: 'ファイルを開けませんでした',
     saveError: 'ファイルを保存できませんでした',
     saved: '保存しました',
+    overflowTableTitle: 'ページに収まらない表があります',
+    overflowTableBody:
+      'Wowd は表をページの区切りで分割しないため、用紙からはみ出して表示されます。表の内容は失われず、保存すればそのまま書き戻されます。',
     unsupportedTitle: 'この文書には Wowd が完全には扱えない機能が含まれます',
     unsupportedBody:
       '該当部分は編集できませんが、保存時には元の内容のまま書き戻されるため失われません。'

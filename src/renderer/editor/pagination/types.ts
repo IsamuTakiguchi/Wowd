@@ -28,6 +28,13 @@ export interface PageLayout {
   geometry: PageGeometryPx
   /** 用紙 1 枚ぶんの送り (用紙高 + 隙間) */
   stride: number
+  /**
+   * 1 ページに収まらず紙からはみ出したブロックの数。
+   *
+   * 表はページ間で分割しないので、長い表でこれが起きる。
+   * 黙って溢れさせると「Wowd が表を壊した」に見えるので、画面で知らせる。
+   */
+  overflow: { tables: number; others: number }
 }
 
 export const EMPTY_LAYOUT: PageLayout = {
@@ -45,5 +52,6 @@ export const EMPTY_LAYOUT: PageLayout = {
     headerOffset: 0,
     footerOffset: 0
   },
-  stride: 0
+  stride: 0,
+  overflow: { tables: 0, others: 0 }
 }

@@ -21,6 +21,7 @@ export function App(): React.JSX.Element {
 
   const store = useDocumentStore()
   const toggleFind = useUiStore((s) => s.toggleFind)
+  const overflowingTables = useUiStore((s) => s.overflowingTables)
   const dialog = useUiStore((s) => s.dialog)
   const openDialog = useUiStore((s) => s.openDialog)
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
@@ -156,6 +157,15 @@ export function App(): React.JSX.Element {
           <button type="button" onClick={() => store.setError(null)}>
             {t.dialog.close}
           </button>
+        </div>
+      )}
+
+      {overflowingTables > 0 && (
+        <div className="banner banner-warn" role="status">
+          <div>
+            <strong>{t.file.overflowTableTitle}</strong>
+            <div className="banner-detail">{t.file.overflowTableBody}</div>
+          </div>
         </div>
       )}
 

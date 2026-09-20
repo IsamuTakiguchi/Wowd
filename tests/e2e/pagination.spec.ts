@@ -35,6 +35,26 @@ test.beforeEach(async () => {
   await expect(page.locator('.wowd-content')).toBeVisible()
 })
 
+/** フィクスチャを開く */
+async function openFixture(name: string): Promise<void> {
+  const { readFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const bytes = Array.from(
+    new Uint8Array(readFileSync(join(process.cwd(), 'tests', 'fixtures', 'docx', name)))
+  )
+  await page.evaluate(async (data) => {
+    const store = (
+      window as unknown as {
+        __wowdStore: {
+          getState: () => { openBytes: (b: Uint8Array, p: string | null) => Promise<void> }
+        }
+      }
+    ).__wowdStore
+    await store.getState().openBytes(new Uint8Array(data), null)
+  }, bytes)
+  await page.waitForTimeout(500)
+}
+
 /** 指定した段落数を入力する */
 async function typeParagraphs(count: number): Promise<void> {
   await page.locator('.wowd-content').click()
@@ -158,4 +178,21 @@ test('改ページを挿入すると次のページから始まる', async () =>
   await waitForPagination()
 
   await expect(page.locator('.wowd-page-backdrop')).toHaveCount(2)
+})
+
+test('ページに収まらない表があると知らせる', async () => {
+  // Wowd は表をページ間で分割しない。黙って溢れさせると
+  // 「Wowd が表を壊した」に見えるので、出ていることを伝える
+  await openFixture('16-longtable.docx')
+  await waitForPagination()
+
+  const banner = page.locator('.banner-warn', { hasText: 'ページに収まらない表' })
+  await expect(banner).toBeVisible()
+  await expect(banner).toContainText('保存すればそのまま書き戻されます')
+})
+
+test('収まる表では知らせない', async () => {
+  await openFixture('08-tables.docx')
+  await waitForPagination()
+  await expect(page.locator('.banner-warn', { hasText: 'ページに収まらない表' })).toHaveCount(0)
 })

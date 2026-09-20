@@ -43,6 +43,7 @@ export function WowdEditor({
   const author = useUiStore((s) => s.author)
   const revisionDisplay = useUiStore((s) => s.revisionDisplay)
   const setPageInfo = useUiStore((s) => s.setPageInfo)
+  const setOverflowingTables = useUiStore((s) => s.setOverflowingTables)
 
   /** 文書差し替え中に onUpdate が走って dirty が立つのを防ぐ */
   const loading = useRef(false)
@@ -52,8 +53,9 @@ export function WowdEditor({
     (next: PageLayout) => {
       setLayout(next)
       setPageInfo(1, Math.max(1, next.pages.length))
+      setOverflowingTables(next.overflow.tables)
     },
-    [setPageInfo]
+    [setPageInfo, setOverflowingTables]
   )
 
   // 拡張一覧は初回だけ作る。毎回作り直すとエディタが再生成される

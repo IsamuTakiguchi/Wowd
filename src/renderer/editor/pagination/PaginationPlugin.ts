@@ -3,7 +3,12 @@ import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { SectionProps } from '@core/model/types'
 import { pageGeometry, toPx } from '@core/layout/pageGeometry'
-import { computeBreaks, spacerHeight, type BlockInput } from '@core/layout/pageBreaks'
+import {
+  computeBreaks,
+  overflowingBlocks,
+  spacerHeight,
+  type BlockInput
+} from '@core/layout/pageBreaks'
 import { measureBlocks, SPACER_ATTRIBUTE, type BlockMetrics } from './measure'
 import { PAGE_GAP, type PageLayout, type PageInfo, EMPTY_LAYOUT } from './types'
 
@@ -152,7 +157,17 @@ class PaginationRunner {
       )
     }
 
-    const layout = this.buildLayout(section, geometry, computed.length + 1)
+    // 紙からはみ出したブロックを数える。表はページ間で分割しないので、
+    // 長い表でここに出る。黙って溢れさせず画面で知らせる
+    const overflow = { tables: 0, others: 0 }
+    for (const index of overflowingBlocks(inputs, { pageContentHeight: geometry.textBlock })) {
+      const block = metrics[index]
+      if (!block) continue
+      if (this.nodeAt(block.pos)?.type.name === 'table') overflow.tables++
+      else overflow.others++
+    }
+
+    const layout = this.buildLayout(section, geometry, computed.length + 1, overflow)
     const signature = computed.map((b) => `${b.index}:${Math.round(b.remaining)}`).join('|')
 
     // いま実際に適用されているスペーサーの数。
@@ -230,7 +245,8 @@ class PaginationRunner {
   private buildLayout(
     section: SectionProps,
     geometry: ReturnType<typeof toPx>,
-    pageCount: number
+    pageCount: number,
+    overflow: PageLayout['overflow'] = { tables: 0, others: 0 }
   ): PageLayout {
     const stride = geometry.pageBlock + PAGE_GAP
     const start = section.pgNumType?.start ?? 1
@@ -238,7 +254,7 @@ class PaginationRunner {
     for (let i = 0; i < Math.max(1, pageCount); i++) {
       pages.push({ index: i, displayNumber: start + i, top: i * stride, section })
     }
-    return { pages, breaks: [], geometry, stride }
+    return { pages, breaks: [], geometry, stride, overflow }
   }
 }
 

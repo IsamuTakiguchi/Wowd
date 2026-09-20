@@ -31,6 +31,7 @@ import { readBody } from './body'
 import { readStyles, emptyStyleTable } from './styles'
 import { readNumbering } from './numbering'
 import { readComments } from './comments'
+import { unsupportedLabels, LAYOUT_LIMITS } from '../unsupportedLabels'
 import { defaultSection } from './section'
 import type { RunContext } from './run'
 import { emptyNumberingTable } from '../../numbering/resolve'
@@ -251,7 +252,7 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     filePath,
     doc,
     resources,
-    unsupported: [...unsupportedLayout(resources), ...ctx.unsupported].sort(),
+    unsupported: [...unsupportedLayout(resources, ctx.unsupported), ...unsupportedLabels([...ctx.unsupported])],
     pkg
   }
 }
@@ -266,8 +267,12 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
  * ページ分割が「1 本の縦の流れ + 空白の挿し込み」でできているため、
  * 段を横に並べる描画がそもそも載らない。直すにはページ分割の作りから変える。
  */
-function unsupportedLayout(resources: WowdResources): string[] {
+function unsupportedLayout(resources: WowdResources, tags: ReadonlySet<string>): string[] {
   const out: string[] = []
-  if (resources.sections.some((s) => (s.cols?.num ?? 1) > 1)) out.push('段組み')
+  if (resources.sections.some((s) => (s.cols?.num ?? 1) > 1)) out.push(LAYOUT_LIMITS.columns)
+  // 脚注そのものはタグ名から拾える。ここで言うのは**置き場所**の話
+  if (tags.has('w:footnoteReference') || tags.has('w:endnoteReference')) {
+    out.push(LAYOUT_LIMITS.footnotePlacement)
+  }
   return out
 }

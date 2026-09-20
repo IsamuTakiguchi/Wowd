@@ -202,6 +202,37 @@ function singleCommentPart(id: string, author: string, body: string): Uint8Array
   return new TextEncoder().encode(xml)
 }
 
+/**
+ * 16: 1 ページに収まらない長い表。
+ *
+ * Wowd は表をページ間で分割しないので、この表は紙からはみ出す。
+ * 溢れること自体は無限ループを避けるための正しい動きだが、
+ * 黙って溢れさせると「Wowd が表を壊した」に見える。
+ * 画面で知らせる経路を、実際に溢れる文書で確かめるために置く。
+ */
+function longTableDoc(): string {
+  const row = (i: number): string =>
+    `<w:tr>` +
+    [0, 1, 2]
+      .map(
+        (c) =>
+          `<w:tc><w:tcPr><w:tcW w:w="2500" w:type="dxa"/></w:tcPr>` +
+          `<w:p><w:r><w:t xml:space="preserve">行 ${i} 列 ${c}</w:t></w:r></w:p></w:tc>`
+      )
+      .join('') +
+    `</w:tr>`
+
+  return (
+    para(text('次の表は 1 ページに収まりません。')) +
+    `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>` +
+    `<w:tblGrid><w:gridCol w:w="2500"/><w:gridCol w:w="2500"/><w:gridCol w:w="2500"/></w:tblGrid>` +
+    Array.from({ length: 80 }, (_, i) => row(i + 1)).join('') +
+    `</w:tbl>` +
+    para(text('表の後の段落。')) +
+    SECT_A4
+  )
+}
+
 /** 10: 変更履歴とコメント範囲 */
 function revisionsDoc(): string {
   const ins =
@@ -528,6 +559,7 @@ function main(): void {
       { partName: 'word/footer1.xml', contentType: FOOTER_TYPE }
     ]
   })
+  emit('16-longtable.docx', 'blank-a4.docx', longTableDoc(), {})
   console.log('完了')
 }
 

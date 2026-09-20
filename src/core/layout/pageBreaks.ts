@@ -105,3 +105,24 @@ export function spacerHeight(
 ): number {
   return Math.max(0, remaining) + marginAfter + gap + marginBefore
 }
+
+/**
+ * 1 ページに収まらないブロックの番号を返す。
+ *
+ * 規則 4 で「そのページに置いて溢れさせる」対象そのもの。
+ * 溢れること自体は無限ループを避けるための正しい振る舞いだが、
+ * **利用者から見ると紙からはみ出して見える。**
+ * 表はページ間で分割しないので、長い表でこれが起きる。
+ *
+ * 黙って溢れさせると「Wowd が表を壊した」と受け取られる。
+ * 知らせるために、ここで数えられるようにしておく。
+ */
+export function overflowingBlocks(blocks: BlockInput[], options: BreakOptions): number[] {
+  const { pageContentHeight } = options
+  if (pageContentHeight <= 0) return []
+  const out: number[] = []
+  for (let i = 0; i < blocks.length; i++) {
+    if ((blocks[i]?.height ?? 0) > pageContentHeight) out.push(i)
+  }
+  return out
+}
