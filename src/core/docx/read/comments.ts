@@ -47,7 +47,9 @@ export function readComments(
       date: attr(node, 'w:date') ?? '',
       body,
       parentId: null,
-      done: false
+      done: false,
+      // 本文を読んだあとに read/index.ts が差し込む
+      refRPr: null
     })
   }
 

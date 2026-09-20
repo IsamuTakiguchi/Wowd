@@ -7,7 +7,8 @@ import {
   intAttr,
   boolVal,
   valOf,
-  serializeChildren
+  serializeChildren,
+  otherAttrs
 } from '../xml'
 
 const KNOWN_SECTPR = new Set([
@@ -35,7 +36,8 @@ export function defaultSection(id: string): SectionProps {
     titlePg: false,
     pgNumType: null,
     type: 'nextPage',
-    rawSectPr: null
+    rawSectPr: null,
+    rawAttrs: null
   }
 }
 
@@ -80,8 +82,9 @@ export function readSection(sectPr: XNode, id: string): SectionProps {
       }
       case 'w:cols':
         out.cols = {
-          num: intAttr(child, 'w:num') ?? 1,
-          space: intAttr(child, 'w:space') ?? 425,
+          // 属性が無ければ null。既定値で埋めると書き出しで増えてしまう
+          num: intAttr(child, 'w:num'),
+          space: intAttr(child, 'w:space'),
           equalWidth: attr(child, 'w:equalWidth') !== '0'
         }
         break
@@ -124,6 +127,9 @@ export function readSection(sectPr: XNode, id: string): SectionProps {
   }
 
   out.rawSectPr = serializeChildren(leftovers)
+  // 属性 (w:rsid* など) もそのまま書き戻す
+  const rest = otherAttrs(sectPr, [])
+  if (Object.keys(rest).length > 0) out.rawAttrs = rest
   return out
 }
 

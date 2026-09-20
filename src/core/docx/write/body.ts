@@ -10,7 +10,7 @@ import type {
   CommentRecord
 } from '../../model/types'
 import { el, wrap, valEl, type AttrMap } from '../xml'
-import { buildCommentScope, replyTable, type CommentScope } from './commentScope'
+import { buildCommentScope, replyTable, refPropsTable, type CommentScope } from './commentScope'
 import {
   TBLPR_ORDER,
   TCPR_ORDER,
@@ -182,7 +182,7 @@ export function writeBody(
 ): string {
   // コメント範囲は段落をまたぐので、**本文全体で 1 つの状態**を共有する。
   // 返信のコメントは本文に印を持たないため、親の範囲に相乗りさせる
-  const scope = buildCommentScope(doc.content, replyTable(comments))
+  const scope = buildCommentScope(doc.content, replyTable(comments), refPropsTable(comments))
   const body = doc.content.map((b) => writeBlock(b, sections, scope)).join('')
   const trailing = trailingSectionId ? sections.get(trailingSectionId) : undefined
   const tail = trailing ? writeSectionProps(trailing) : ''

@@ -100,6 +100,21 @@ export interface ParagraphAttrs {
    */
   paraMarkRevision: { kind: 'ins' | 'del'; meta: RevisionMeta } | null
   /**
+   * w14:textId — 段落の本文の識別子。paraId と対になる。
+   *
+   * paraId と同じく段落ごとに固有なので、分割したときに引き継いではいけない。
+   * そのため rawAttrs の一括退避には入れず、別に持つ。
+   */
+  textId: string | null
+  /**
+   * モデル化していない w:p の属性 (w:rsid* など)。
+   *
+   * Word は段落ごとに編集セッションの印 (rsid) を持ち、文書比較に使う。
+   * 落とすと「開いて保存しただけ」でその情報が消える。
+   * rsid は固有である必要が無いので、分割時に引き継いでよい。
+   */
+  rawAttrs: Record<string, string> | null
+  /**
    * 未対応の w:pPr 子要素を元の XML のまま退避する。
    *
    * w:pPrChange (段落書式の変更履歴) もここに入る。
@@ -376,8 +391,14 @@ export interface SectionProps {
     footer: Twip
     gutter: Twip
   }
-  /** null は元ファイルに w:cols が無かったということ。無い要素を勝手に足さないため */
-  cols: { num: number; space: Twip; equalWidth: boolean } | null
+  /**
+   * null は元ファイルに w:cols が無かったということ。無い要素を勝手に足さないため。
+   *
+   * num / space も同じ理由で null を取る。**既定値で埋めてはいけない。**
+   * Word が書いた `<w:cols w:space="425"/>` に w:num="1" を足して返すと、
+   * 開いて保存しただけで原本と違う属性が増える。
+   */
+  cols: { num: number | null; space: Twip | null; equalWidth: boolean } | null
   /**
    * w:docGrid — 「文字数と行数」。
    * charPitch_pt = normalFontSize_pt + charSpace / 4096
@@ -397,6 +418,8 @@ export interface SectionProps {
   type: 'nextPage' | 'continuous' | 'evenPage' | 'oddPage'
   /** 未対応の w:sectPr 子要素 */
   rawSectPr: string | null
+  /** モデル化していない w:sectPr の属性 (w:rsid* など) */
+  rawAttrs: Record<string, string> | null
 }
 
 export interface StyleDef {
@@ -482,6 +505,15 @@ export interface CommentRecord {
   /** commentsExtended.xml の paraIdParent から解決したスレッド親 */
   parentId: string | null
   done: boolean
+  /**
+   * 本文の w:commentReference を載せているランの w:rPr (原文のまま)。
+   *
+   * 参照のランは読み込み時に捨てて書き出し時に作り直す
+   * (raw で残すと保存のたびに参照が増えるため)。
+   * そのとき書式まで作り直すと、Word が付けていた
+   * 「コメント参照」の文字スタイルや大きさが失われる。
+   */
+  refRPr: string | null
 }
 
 export interface RelationshipEntry {

@@ -70,7 +70,8 @@ describe('threadComments', () => {
           date: '2026-01-01',
           body: { type: 'doc' as const, content: [] },
           parentId: '999',
-          done: false
+          done: false,
+          refRPr: null
         }
       ]
     ])

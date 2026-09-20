@@ -17,7 +17,8 @@ import {
   intVal,
   intAttr,
   findChild,
-  serializeChildren
+  serializeChildren,
+  otherAttrs
 } from '../xml'
 import {
   readRun,
@@ -40,6 +41,8 @@ export const EMPTY_PARAGRAPH_ATTRS: ParagraphAttrs = {
   snapToGrid: true,
   sectionId: null,
   paraId: null,
+  textId: null,
+  rawAttrs: null,
   markRunProps: null,
   paraMarkRevision: null,
   rawPPr: null
@@ -126,8 +129,18 @@ export function readParagraphProps(pPr: XNode | undefined): ReadParagraphResult 
       case 'w:numPr': {
         const numId = intVal(findChild(child, 'w:numId'))
         const ilvl = intVal(findChild(child, 'w:ilvl'), 0) ?? 0
-        // numId=0 は「リスト解除」を意味する。リストとして扱わない
-        if (numId != null && numId > 0) attrs.numPr = { numId, ilvl }
+        /**
+         * numId=0 は「この段落だけリストを外す」という**明示の指定**。
+         *
+         * 箇条書きを持つスタイル (リスト段落など) を当てた段落から
+         * Word で箇条書きを外すと、この形が書かれる。
+         * リストとしては扱わないが、**要素ごと捨ててはいけない。**
+         * 捨てるとスタイル側の箇条書きが復活して、記号が戻ってしまう。
+         *
+         * 記号を出すかどうかは numId から番号定義を引けるかで決まるので
+         * (numId=0 は引けない)、モデルに残しても表示には影響しない。
+         */
+        if (numId != null) attrs.numPr = { numId, ilvl }
         break
       }
       case 'w:jc': {
@@ -215,6 +228,11 @@ export function readParagraph(p: XNode, ctx: RunContext): ReadParagraphOutput {
   const { attrs, sectPr } = readParagraphProps(findChild(p, 'w:pPr'))
   const paraId = attr(p, 'w14:paraId')
   if (paraId) attrs.paraId = paraId
+  const textId = attr(p, 'w14:textId')
+  if (textId) attrs.textId = textId
+  // 残りの属性 (w:rsid* など) はそのまま抱えて書き戻す
+  const rest = otherAttrs(p, ['w14:paraId', 'w14:textId'])
+  if (Object.keys(rest).length > 0) attrs.rawAttrs = rest
 
   const content: InlineNode[] = []
   readInlineChildren(childrenOf(p), content, ctx)

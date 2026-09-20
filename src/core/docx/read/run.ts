@@ -205,6 +205,8 @@ export interface RunContext {
   unsupported: Set<string>
   /** 関係 ID からメディアパートの名前を引く。画像の解決に使う */
   resolveMedia?: (relId: string) => string | null
+  /** コメント ID → 参照ランの w:rPr。書き出しで作り直すときに使う */
+  commentRefProps?: Map<string, string>
 }
 
 /** モデル化済みの w:r 子要素 */
@@ -252,8 +254,16 @@ export function readRun(run: XNode, ctx: RunContext): InlineNode[] {
     const tag = tagOf(child)
     switch (tag) {
       case 'w:rPr':
-      case 'w:commentReference':
         break
+      case 'w:commentReference': {
+        // 参照そのものは捨てるが、それを載せていたランの書式は覚えておく。
+        // Word の「コメント参照」スタイルや大きさを保つため
+        const id = attr(child, 'w:id')
+        const props = findChild(run, 'w:rPr')
+        const xml = props ? serializeChildren(childrenOf(props)) : null
+        if (id && xml && ctx.commentRefProps) ctx.commentRefProps.set(id, xml)
+        break
+      }
       case 'w:t':
       case 'w:delText':
         pushText(textOf(child))

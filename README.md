@@ -276,9 +276,20 @@ Word 側で期待どおりに扱われることを確認した。
 **規格検証だけでは Word 互換を保証できない**ことの実例として記録しておく。
 同種の欠陥は `src/core/docx/validate.ts` の錨の検査で捕まえるようにした。
 
-**逆方向 (Word で作った `.docx` を Wowd が壊さず開けるか) は未検証。**
-実際の Word で作った `.docx` を `tests/fixtures/docx/real-*.docx` として置けば、
-上記のテストが自動的に拾う。許容済みの差分は `docs/round-trip-report.md` にある。
+**逆方向 (Word で作った `.docx` を Wowd が壊さず開けるか) も確認済み。**
+Word 16 が書いた実物を `tests/fixtures/docx/real-*.docx` に置けば、
+上記のテストが自動的に拾う (利用者の実文書なので追跡はしない)。
+
+そこで、こちらで生成したフィクスチャでは 1 件も出なかった欠落が 4 件出た:
+
+- `w:numPr` の `w:numId w:val="0"` (「この段落だけ箇条書きを外す」の明示) を捨てていた
+- `w:commentReference` を載せたランの書式を捨てていた
+- **`w:p` と `w:sectPr` の属性** (`w14:textId` / `w:rsid*`) を捨てていた
+  — 子要素は raw 退避していたのに、属性を見る仕組みが無かった
+
+いずれも修正済み。忠実性テストを属性まで広げてある。
+許容している差分と、まだ確認できていないもの (表・画像を含む実文書) は
+`docs/round-trip-report.md` にある。
 
 実機確認の手順とチェックリストは **`docs/word-verification.md`** にある。
 確認用ファイルは `npm run word-check` で生成でき、

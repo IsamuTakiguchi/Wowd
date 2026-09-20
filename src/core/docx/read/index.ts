@@ -181,11 +181,16 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     return pkg.parts.has(part) ? part : null
   }
 
+  // 本文中の w:commentReference を載せているランの書式。
+  // 参照は書き出しで作り直すので、ここで拾っておかないと書式が失われる
+  const commentRefProps = new Map<string, string>()
+
   const ctx: RunContext = {
     revision: null,
     commentIds: [],
     unsupported: new Set(),
-    resolveMedia
+    resolveMedia,
+    commentRefProps
   }
 
   const root = parseXml(documentXml).find((n) => tagOf(n) === 'w:document')
@@ -233,6 +238,13 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     contentTypes: readPartText(pkg, '[Content_Types].xml') ?? '',
     documentPartName: pkg.documentPartName,
     trailingSectionId
+  }
+
+  // 参照ランの書式を各コメントに移す。
+  // comments.xml を読む時点では本文をまだ見ていないので、ここで差し込む
+  for (const [id, rPr] of commentRefProps) {
+    const record = resources.comments.get(id)
+    if (record) record.refRPr = rPr
   }
 
   return {

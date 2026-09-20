@@ -74,7 +74,8 @@ export function CommentsPane({ editor }: { editor: Editor | null }): React.JSX.E
       date: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       body: bodyOf(draft),
       parentId: replyTo,
-      done: false
+      done: false,
+      refRPr: null
     }
 
     updateComments((comments) => new Map(comments).set(id, record))

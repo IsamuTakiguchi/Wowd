@@ -46,6 +46,60 @@ function allText(xml: string): string {
     .join('')
 }
 
+/**
+ * 開始タグごとの (タグ名, 属性名) の出現数。
+ *
+ * 要素の数だけ見ていると**属性の欠落を見落とす**。
+ * 実際に w:p の w14:textId と w:rsid* が落ちていて、
+ * Word の文書比較が使う情報が「開いて保存しただけ」で消えていた。
+ */
+function attrCounts(xml: string): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const tag of xml.matchAll(/<([A-Za-z][\w]*:[A-Za-z][\w]*)((?:\s[^>]*)?)\/?>/g)) {
+    const name = tag[1] ?? ''
+    for (const a of (tag[2] ?? '').matchAll(/\s([A-Za-z][\w]*:[A-Za-z][\w]*)=/g)) {
+      const key = `${name}/${a[1]}`
+      out.set(key, (out.get(key) ?? 0) + 1)
+    }
+  }
+  return out
+}
+
+/**
+ * 落ちてもよい属性。**タグ名まで含めて限定する。**
+ *
+ * - w:r の w:rsid*: ランはエディタで結合・分割されるので、
+ *   ラン単位の編集セッション印は原理的に対応を保てない
+ * - w:ins / w:del の w16du:dateUtc: w:date の UTC 表記の控えで、
+ *   Word が書き直す
+ *
+ * w:p や w:sectPr の w:rsid* は保持する対象なので、ここには入れない。
+ */
+const ACCEPTED_ATTR_LOSS = new Set([
+  // xml:space="preserve" は前後に空白がある場合だけ付ける。
+  // docs/round-trip-report.md の「許容済みの差分」に記録済み
+  'w:t/xml:space',
+  'w:delText/xml:space',
+  'w:r/w:rsidR',
+  'w:r/w:rsidRPr',
+  'w:r/w:rsidDel',
+  'w:ins/w16du:dateUtc',
+  'w:del/w16du:dateUtc'
+])
+
+/** before にあって after で減った (タグ, 属性) を返す */
+function lostAttrs(before: string, after: string): string[] {
+  const a = attrCounts(before)
+  const b = attrCounts(after)
+  const lost: string[] = []
+  for (const [key, n] of a) {
+    if (ACCEPTED_ATTR_LOSS.has(key)) continue
+    const m = b.get(key) ?? 0
+    if (m < n) lost.push(`${key}: ${n} -> ${m}`)
+  }
+  return lost
+}
+
 /** 空ランの正規化で数が減りうるタグ。文字の欠落は allText が見る */
 const NORMALIZED = new Set(['w:r', 'w:t'])
 
@@ -76,6 +130,12 @@ describe('往復で情報が落ちないこと', () => {
         if (m < n) lost.push(`${tag}: ${n} -> ${m}`)
       }
       expect(lost, `往復で消えた要素:\n  ${lost.join('\n  ')}`).toEqual([])
+    })
+
+    it(`${name}: 属性が失われない`, () => {
+      const { before, after } = roundTrip(name)
+      const lost = lostAttrs(before, after)
+      expect(lost, `往復で消えた属性:\n  ${lost.join('\n  ')}`).toEqual([])
     })
   }
 })

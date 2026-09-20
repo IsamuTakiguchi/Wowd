@@ -107,6 +107,11 @@ export function writeParagraph(
 ): string {
   const pPr = writeParagraphProps(node.attrs, sections)
   const content = writeInlineRuns(node.content ?? [], false, scope)
-  const attrs: AttrMap = node.attrs.paraId ? { 'w14:paraId': node.attrs.paraId } : {}
+  // モデル化していない属性 (w14:textId・w:rsid* など) も書き戻す
+  const attrs: AttrMap = {
+    ...(node.attrs.paraId ? { 'w14:paraId': node.attrs.paraId } : {}),
+    ...(node.attrs.textId ? { 'w14:textId': node.attrs.textId } : {}),
+    ...(node.attrs.rawAttrs ?? {})
+  }
   return wrap('w:p', attrs, pPr + content)
 }

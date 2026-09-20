@@ -49,8 +49,8 @@ export function writeSectionProps(section: SectionProps): string {
     add(
       'w:cols',
       el('w:cols', {
-        'w:num': section.cols.num,
-        'w:space': section.cols.space,
+        'w:num': section.cols.num ?? undefined,
+        'w:space': section.cols.space ?? undefined,
         'w:equalWidth': section.cols.equalWidth ? undefined : '0'
       })
     )
@@ -69,5 +69,5 @@ export function writeSectionProps(section: SectionProps): string {
 
   for (const frag of splitFragments(section.rawSectPr)) frags.push(frag)
 
-  return wrap('w:sectPr', undefined, emitOrdered(SECTPR_ORDER, frags, 'w:sectPr'))
+  return wrap('w:sectPr', section.rawAttrs ?? undefined, emitOrdered(SECTPR_ORDER, frags, 'w:sectPr'))
 }

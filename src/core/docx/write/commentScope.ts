@@ -19,6 +19,8 @@ export interface CommentScope {
   remaining: Map<string, number>
   /** 親 id → 返信の id。返信も親と同じ範囲に錨を下ろす */
   replies: Map<string, string[]>
+  /** id → 参照ランの w:rPr (原文のまま)。読み込み時に拾ったもの */
+  refProps: Map<string, string>
 }
 
 /**
@@ -42,6 +44,15 @@ function expandReplies(ids: string[], replies: Map<string, string[]>): string[] 
   return out
 }
 
+/** id → 参照ランの書式。Word が付けた「コメント参照」スタイルなどを保つ */
+export function refPropsTable(comments: Map<string, CommentRecord>): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const [id, record] of comments) {
+    if (record.refRPr) out.set(id, record.refRPr)
+  }
+  return out
+}
+
 /** 親 id → 返信の id の表を作る。親が居ない返信は諦めてそのまま扱う */
 export function replyTable(comments: Map<string, CommentRecord>): Map<string, string[]> {
   const out = new Map<string, string[]>()
@@ -57,7 +68,8 @@ export function replyTable(comments: Map<string, CommentRecord>): Map<string, st
 /** 文書全体を先に走査して、各 id の出現数を数える */
 export function buildCommentScope(
   blocks: BlockNode[],
-  replies: Map<string, string[]> = new Map()
+  replies: Map<string, string[]> = new Map(),
+  refProps: Map<string, string> = new Map()
 ): CommentScope {
   const remaining = new Map<string, number>()
   const countInline = (nodes: InlineNode[] | undefined): void => {
@@ -84,7 +96,7 @@ export function buildCommentScope(
     }
   }
   walk(blocks)
-  return { open: [], remaining, replies }
+  return { open: [], remaining, replies, refProps }
 }
 
 /** 消費したぶんだけ残数を減らす */

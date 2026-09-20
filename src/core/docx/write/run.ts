@@ -158,7 +158,11 @@ export function writeInlineRuns(
     for (const id of closing) marks += el('w:commentRangeEnd', { 'w:id': id })
     // 参照は範囲を閉じた直後に置く
     for (const id of closing) {
-      marks += wrap('w:r', undefined, el('w:commentReference', { 'w:id': id }))
+      // 読み込み時に拾った書式があれば載せ直す。
+      // 無ければ素のランで出す (こちらで作ったコメントなど)
+      const rPr = scope.refProps.get(id)
+      const inner = (rPr ? wrap('w:rPr', undefined, rPr) : '') + el('w:commentReference', { 'w:id': id })
+      marks += wrap('w:r', undefined, inner)
     }
     for (const id of next) {
       if (!scope.open.includes(id)) {

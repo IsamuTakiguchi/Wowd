@@ -106,6 +106,23 @@ export function attr(node: XNode | undefined, name: string): string | undefined 
   return attrsOf(node)[ATTR_PREFIX + name]
 }
 
+/**
+ * モデル化した以外の属性をそのまま返す。書き戻すために取っておく。
+ *
+ * 子要素は raw 退避しているのに属性は落としていた。
+ * w:p だけでも w14:textId と w:rsid* が消え、開いて保存するだけで
+ * Word の文書比較が使う情報が失われる。
+ */
+export function otherAttrs(node: XNode | undefined, known: string[]): Record<string, string> {
+  const skip = new Set(known.map((n) => ATTR_PREFIX + n))
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(attrsOf(node))) {
+    if (skip.has(key)) continue
+    out[key.slice(ATTR_PREFIX.length)] = String(value)
+  }
+  return out
+}
+
 /** w:val 属性。WML の大半の要素は値をここに持つ */
 export function valOf(node: XNode | undefined): string | undefined {
   return attr(node, 'w:val')

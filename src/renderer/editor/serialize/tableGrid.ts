@@ -124,6 +124,8 @@ function continuationOf(source: TableCellNode, colspan: number): TableCellNode {
           snapToGrid: true,
           sectionId: null,
           paraId: null,
+          textId: null,
+          rawAttrs: null,
           markRunProps: null,
           paraMarkRevision: null,
           rawPPr: null
