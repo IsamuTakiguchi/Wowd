@@ -4,8 +4,8 @@
 
 | 環境 | 成果物 | Linux から作れるか |
 |---|---|---|
-| Windows | `Wowd-0.1.0-win.zip` (展開して動く持ち運び版) | **作れる** (wine 64bit が要る) |
-| Windows | `Wowd Setup 0.1.0.exe` (NSIS インストーラ) | **作れない** (下記) |
+| Windows | `Wowd Setup 0.1.0.exe` (インストーラ) | **作れる** (wine 32bit が要る) |
+| Windows | `Wowd-0.1.0-win.zip` (展開して動く持ち運び版) | **作れる** (wine 64bit だけでよい) |
 | macOS | `Wowd-0.1.0.dmg` | 作れない |
 | Linux | `Wowd-0.1.0.AppImage` / `wowd_0.1.0_amd64.deb` | 作れる |
 
@@ -23,24 +23,41 @@ ln -sf /usr/lib/wine/wine64 /usr/local/bin/wine   # wine の入口を作る
 npx electron-builder --win zip
 ```
 
-### Windows のインストーラ (NSIS) は Linux から作れない
+### Windows のインストーラ (NSIS)
 
 **32bit の wine が要る。** NSIS はアンインストーラを作るために
 生成したインストーラを一度実行するが、その実行ファイルが 32bit のため。
+64bit の wine だけでは `failed to load ... syswow64\ntdll.dll` で止まる。
 
-64bit の wine だけでは
-`failed to load ... syswow64\ntdll.dll` で止まる。
-Ubuntu 24.04 の i386 パッケージは依存関係が壊れていて
-(`libgd3:i386` が取得できない) 入れられなかった。
+Ubuntu 24.04 では `apt-get install wine32` が通らない。
+i386 の依存が壊れていて (`libgd3:i386` が取得できない)
+`libc6:i386` すら入らない。
 
-**Windows 機で作るのが確実。** その環境でしか作れないものは他にもある
-(電子署名)。
+**依存解決を諦めて、必要な 3 つだけを直接入れれば動く。**
+wine は必要なライブラリを実行時に遅延読み込みするので、
+`libc6:i386` (32bit の ld.so) さえあれば起動する。
+
+```bash
+dpkg --add-architecture i386 && apt-get update
+mkdir -p /tmp/w32 && cd /tmp/w32
+apt-get download libc6:i386 libwine:i386 wine32:i386
+dpkg -i --force-depends --force-overwrite *.deb   # 依存は無視してよい
+ln -sf /usr/lib/wine/wine /usr/local/bin/wine     # 32bit の入口を使う
+/usr/lib/wine/wine --version                      # 動けば成功
+npx electron-builder --win nsis
+```
+
+`--force-depends` は `libc6:amd64` の処理エラーを出すが、
+**64bit 側は壊れない** (展開済みのファイルはそのまま)。
+入れたあとに `node --version` が通ることを確かめること。
+
+電子署名だけは、どうやってもここでは付けられない (証明書が要る)。
 
 ```bash
 npm run package                # いまの環境向け
 npx electron-builder --linux
-npx electron-builder --win zip # Linux からでも作れる
-npx electron-builder --win     # インストーラも。Windows で
+npx electron-builder --win zip # 持ち運び版。wine 64bit があれば作れる
+npx electron-builder --win     # インストーラも。wine 32bit が要る
 npx electron-builder --mac     # macOS で
 ```
 
