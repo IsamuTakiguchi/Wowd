@@ -18,7 +18,13 @@ extraResources:
 # 作り直しは npm run icon (原本は resources/icon.svg)
 icon: resources/icon.png
 win:
-  target: nsis
+  # nsis … インストーラ。**Windows か、32bit の wine がある環境でしか作れない**
+  #        (NSIS がアンインストーラを作るのに 32bit の実行ファイルを動かすため)
+  # zip  … 展開してそのまま動く持ち運び版。インストール不要・管理者権限不要。
+  #        こちらは Linux からでも作れる
+  target:
+    - nsis
+    - zip
   # 署名する場合は CSC_LINK / CSC_KEY_PASSWORD を環境変数で渡す。
   # 証明書は本人確認が要るので、リポジトリには置かない
 mac:
