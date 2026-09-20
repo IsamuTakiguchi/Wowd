@@ -1,0 +1,118 @@
+name: リリース
+
+# タグを打つと走る。v0.1.0 のようにバージョンを付ける。
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# 手動でも走らせられるが、**既定ブランチにこのファイルがある場合だけ**
+# Actions の画面に「Run workflow」が出る (GitHub の仕様)。
+# 既定ブランチに入れる前はタグで動かすこと。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'リリースのタグ (例: v0.1.0)'
+        required: true
+        default: v0.1.0
+
+# リリースを作るために書き込みが要る
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    strategy:
+      # 1 つ落ちても他は最後まで作る。
+      # 署名や環境の都合で特定の OS だけ落ちることがあるため
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            target: --win
+            files: release/Wowd-Setup-*.exe
+          - os: macos-latest
+            label: macOS
+            target: --mac
+            files: release/*.dmg
+          - os: ubuntu-latest
+            label: Linux
+            target: --linux
+            files: |
+              release/*.AppImage
+              release/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      # 環境に依らない検査だけここで行う。
+      # テストは CI ワークフローが毎 push で回しているので重ねない
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: パッケージする
+        env:
+          # 署名証明書を持たない環境で、署名を探しに行って失敗しないようにする。
+          # 証明書を用意したら CSC_LINK / CSC_KEY_PASSWORD を Secrets に入れ、
+          # この行を消す
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: ${{ matrix.files }}
+          # 何も作れていないのに成功扱いにしない
+          if-no-files-found: error
+
+  release:
+    name: リリースに載せる
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: 成果物を確認する
+        run: find dist -type f -printf '%s\t%p\n' | sort -rn
+
+      - name: リリースを作る
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          # 作り直せるように、同じタグのリリースがあれば消してから作る
+          gh release delete "$TAG" --yes --cleanup-tag=false 2>/dev/null || true
+          gh release create "$TAG" \
+            --title "Wowd ${TAG#v}" \
+            --notes "$(cat <<'NOTES'
+          日本語の文書エディタ Wowd です。
+
+          ## ダウンロード
+
+          | 環境 | ファイル |
+          |---|---|
+          | Windows | `Wowd-Setup-*.exe` |
+          | macOS | `*.dmg` |
+          | Linux | `*.AppImage` / `*.deb` |
+
+          ## 注意
+
+          **電子署名を付けていません。** 起動時に
+          「WindowsによってPCが保護されました」(Windows) や
+          Gatekeeper の警告 (macOS) が出ます。
+          Windows は「詳細情報」→「実行」、
+          macOS は右クリック →「開く」で起動できます。
+          NOTES
+          )" \
+            $(find dist -type f | sort)

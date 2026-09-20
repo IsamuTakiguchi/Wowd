@@ -373,6 +373,14 @@ npm run icon       # アイコンを作り直す (原本は resources/icon.svg)
 npm run package    # いまの環境向けにパッケージする
 ```
 
+配るときは**タグを打つだけ**でよい。
+`.github/workflows/release.yml` が Windows・macOS・Linux の
+それぞれでビルドし、GitHub のリリースに載せる。
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
 Linux の AppImage と deb は生成と起動まで確認済み。
 Windows の `.exe` と macOS の `.dmg` は、それぞれその環境でしか作れない。
 

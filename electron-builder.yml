@@ -1,5 +1,13 @@
 appId: dev.wowd.app
 productName: Wowd
+# 配るファイルを小さくする。
+# maximum は LZMA の圧縮率を上げる (ビルドは遅くなるが、配布は 1 回きり)
+compression: maximum
+# Electron は既定で 50 以上の言語の翻訳を同梱する。
+# 日本語と英語だけ残せば十数 MB 減る
+electronLanguages:
+  - ja
+  - en-US
 directories:
   output: release
   buildResources: resources
@@ -18,6 +26,8 @@ extraResources:
 # 作り直しは npm run icon (原本は resources/icon.svg)
 icon: resources/icon.png
 win:
+  # 空白を含む名前はリンクや結合で事故のもとなので、ハイフンにする
+  artifactName: Wowd-Setup-${version}.${ext}
   # nsis … インストーラ。**Windows か、32bit の wine がある環境でしか作れない**
   #        (NSIS がアンインストーラを作るのに 32bit の実行ファイルを動かすため)
   # zip  … 展開してそのまま動く持ち運び版。インストール不要・管理者権限不要。

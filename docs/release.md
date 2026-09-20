@@ -63,13 +63,44 @@ npx electron-builder --mac     # macOS で
 
 ## 配る
 
-成果物は 100MB を超えるので、**置き場所が要る**。
-GitHub のリリースに添付するのが手軽で、更新の確認
-(ヘルプ →「更新を確認...」) もそこを見る。
+**タグを打つだけでよい。** `.github/workflows/release.yml` が
+Windows・macOS・Linux のそれぞれでビルドし、GitHub のリリースに載せる。
 
 ```bash
-gh release create v0.1.0 release/Wowd-0.1.0-win.zip release/*.AppImage release/*.deb
+git tag v0.1.0
+git push origin v0.1.0
 ```
+
+各環境でしか作れないもの (Windows の `.exe`、macOS の `.dmg`) も、
+それぞれのランナーが作るので手元の環境に縛られない。
+
+同じタグで作り直すときは、タグを消してから打ち直す
+(ワークフローは同名のリリースがあれば消してから作る)。
+
+```bash
+git push --delete origin v0.1.0 && git tag -d v0.1.0
+```
+
+手動実行 (Actions の「Run workflow」) もできるが、
+**既定ブランチにこのファイルがある場合だけ**ボタンが出る (GitHub の仕様)。
+既定ブランチに入れる前はタグで動かす。
+
+### なぜ手で配らないか
+
+成果物は 100MB 前後あり、メールにもチャットにも載らない。
+リリースに置けば URL 1 本で渡せて、
+更新の確認 (ヘルプ →「更新を確認...」) も同じ場所を見る。
+
+### 大きさ
+
+`electron-builder.yml` で 2 つ絞っている。
+
+- `compression: maximum` … LZMA の圧縮率を上げる。ビルドは遅くなるが配布は 1 回きり
+- `electronLanguages: [ja, en-US]` … Electron は既定で 50 以上の言語の翻訳を同梱する
+
+この 2 つで Windows のインストーラは 107MB から 99MB になった。
+**これ以上は大きく減らせない。**残りはほぼ Chromium の実体で、
+Electron アプリである以上は避けられない。
 
 ## アイコン
 
