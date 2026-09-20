@@ -138,6 +138,33 @@ function BlockView({
   pageCount: number
   numberFormat: string
 }): React.JSX.Element | null {
+  // 表を含むヘッダー (社名入りのレターヘッドなど) は珍しくない。
+  // 段落しか描かないと、開いたときにヘッダーの中身が抜けて見える
+  if (block.type === 'table') {
+    return (
+      <table className="wowd-chrome-table">
+        <tbody>
+          {block.content.map((row, r) => (
+            <tr key={r}>
+              {row.content.map((cell, c) => (
+                <td key={c} colSpan={cell.attrs.colspan > 1 ? cell.attrs.colspan : undefined}>
+                  {cell.content.map((inner, i) => (
+                    <BlockView
+                      key={i}
+                      block={inner}
+                      pageNumber={pageNumber}
+                      pageCount={pageCount}
+                      numberFormat={numberFormat}
+                    />
+                  ))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
   if (block.type !== 'paragraph') return null
   const style = paragraphAttrsToStyle(block.attrs)
 

@@ -977,3 +977,18 @@ body {
 .wowd-viewport[data-revisions='original'] [data-format-revision='para']::before {
   display: none;
 }
+
+/* ヘッダー / フッターの中の表 (社名入りのレターヘッドなど) */
+.wowd-chrome-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wowd-chrome-table td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.wowd-chrome-table p {
+  margin: 0;
+}

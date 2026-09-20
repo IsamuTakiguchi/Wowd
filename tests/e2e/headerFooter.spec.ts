@@ -148,3 +148,54 @@ test('既存のヘッダーを持つ文書はその内容が出る', async () =>
   expect(editable + note).toBeGreaterThan(0)
   await closeDialog()
 })
+
+test('表を含むヘッダーも文字だけ直せる', async () => {
+  // 平文に潰すと表が消えるので、行ごとに直す。
+  // 15-headers.docx の先頭ページ用ヘッダーは表を含む
+  await openFixture('15-headers.docx')
+  await openDialog()
+  await page.locator('dialog.wowd-dialog select').first().selectOption('first')
+
+  // 表の中の段落が行として並ぶ
+  const first = page.locator('[data-testid="header-line-0"]')
+  await expect(first).toHaveValue('株式会社サンプル')
+  await expect(page.locator('[data-testid="header-line-1"]')).toHaveValue('東京都千代田区')
+
+  await first.fill('△△法律事務所')
+  await page.locator('[data-testid="header-rich-apply"]').click()
+  await page.locator('dialog.wowd-dialog button', { hasText: 'キャンセル' }).click()
+
+  // 画面のヘッダーに反映され、表の構造も残っている
+  const header = page.locator('.wowd-header').first()
+  await expect(header).toContainText('△△法律事務所')
+  await expect(header).toContainText('東京都千代田区')
+  await expect(header.locator('table')).toHaveCount(1)
+})
+
+test('表を含むヘッダーを直しても保存で表が残る', async () => {
+  const bytes = await page.evaluate(async () => {
+    const store = (
+      window as unknown as {
+        __wowdStore: { getState: () => { saveToBytes: () => Promise<number[]> } }
+      }
+    ).__wowdStore
+    return store.getState().saveToBytes()
+  })
+  expect(bytes.length).toBeGreaterThan(0)
+
+  await page.evaluate(async (data) => {
+    const store = (
+      window as unknown as {
+        __wowdStore: {
+          getState: () => { openBytes: (b: Uint8Array, p: string | null) => Promise<void> }
+        }
+      }
+    ).__wowdStore
+    await store.getState().openBytes(new Uint8Array(data), null)
+  }, bytes)
+  await page.waitForTimeout(500)
+
+  const header = page.locator('.wowd-header').first()
+  await expect(header).toContainText('△△法律事務所')
+  await expect(header.locator('table'), '保存で表が消えた').toHaveCount(1)
+})

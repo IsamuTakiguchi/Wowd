@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import type { Justification } from '@core/model/types'
+import type { Justification, WowdDoc } from '@core/model/types'
 import {
   toEditableText,
   fromEditableText,
+  editableLines,
+  applyEditableLines,
+  type EditableLine,
   PAGE_TOKEN,
   PAGES_TOKEN,
   TAB_TOKEN
@@ -60,8 +63,10 @@ function HeaderFooterForm({ onClose }: { onClose: () => void }): React.JSX.Eleme
     return relId ? (store?.get(relId) ?? null) : null
   }
 
-  const header = toEditableText(contentOf('header'))
-  const footer = toEditableText(contentOf('footer'))
+  const headerDoc = contentOf('header')
+  const footerDoc = contentOf('footer')
+  const header = toEditableText(headerDoc)
+  const footer = toEditableText(footerDoc)
 
   // 枠を切り替えたら入力も作り直す。key で再マウントさせるのが一番確実
   return (
@@ -82,20 +87,40 @@ function HeaderFooterForm({ onClose }: { onClose: () => void }): React.JSX.Eleme
         </p>
       )}
 
-      <PartEditor
-        key={`header-${slot}`}
-        kind="header"
-        label="ヘッダー"
-        initial={header}
-        onSave={(text, jc) => save('header', text, jc)}
-      />
-      <PartEditor
-        key={`footer-${slot}`}
-        kind="footer"
-        label="フッター"
-        initial={footer}
-        onSave={(text, jc) => save('footer', text, jc)}
-      />
+      {header ? (
+        <PartEditor
+          key={`header-${slot}`}
+          kind="header"
+          label="ヘッダー"
+          initial={header}
+          onSave={(text, jc) => save('header', text, jc)}
+        />
+      ) : (
+        <RichPartEditor
+          key={`header-rich-${slot}`}
+          kind="header"
+          label="ヘッダー"
+          doc={headerDoc}
+          onSave={(next) => saveDoc('header', next)}
+        />
+      )}
+      {footer ? (
+        <PartEditor
+          key={`footer-${slot}`}
+          kind="footer"
+          label="フッター"
+          initial={footer}
+          onSave={(text, jc) => save('footer', text, jc)}
+        />
+      ) : (
+        <RichPartEditor
+          key={`footer-rich-${slot}`}
+          kind="footer"
+          label="フッター"
+          doc={footerDoc}
+          onSave={(next) => saveDoc('footer', next)}
+        />
+      )}
     </Dialog>
   )
 
@@ -108,6 +133,91 @@ function HeaderFooterForm({ onClose }: { onClose: () => void }): React.JSX.Eleme
     }
     updateHeaderFooter(kind, result.relId, fromEditableText(text, jc))
   }
+
+  /** 表や画像を含むヘッダー。構造には触らず、中身を差し替えたものを書き戻す */
+  function saveDoc(kind: HeaderFooterKind, next: WowdDoc): void {
+    const relId = relIdOf(kind)
+    if (!document_ || !relId) return
+    updateHeaderFooter(kind, relId, next)
+  }
+}
+
+/**
+ * 表や画像を含むヘッダーの編集。
+ *
+ * 平文に潰すと表も画像も消えるので、段落ごとに直す。
+ * 触らなかったものは元のまま残る。
+ */
+function RichPartEditor({
+  kind,
+  label,
+  doc,
+  onSave
+}: {
+  kind: HeaderFooterKind
+  label: string
+  doc: WowdDoc | null
+  onSave: (next: WowdDoc) => void
+}): React.JSX.Element {
+  const [lines, setLines] = useState<EditableLine[]>(() => editableLines(doc))
+  const [saved, setSaved] = useState(false)
+
+  if (!doc || lines.length === 0) {
+    return (
+      <div className="wowd-dialog-section">
+        <strong>{label}</strong>
+        <p className="wowd-dialog-note">
+          ここでは編集できません。内容はそのまま保存されます。
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="wowd-dialog-section">
+      <strong>{label}</strong>
+      <p className="wowd-dialog-note">
+        表や画像を含むため、文字だけを直せます。表・画像・配置はそのまま残ります。
+      </p>
+      {lines.map((line, index) => (
+        <div className="wowd-dialog-row" key={line.path.join('-')}>
+          <input
+            type="text"
+            value={line.text}
+            disabled={!line.editable}
+            title={
+              line.editable
+                ? line.inTable
+                  ? '表の中の行'
+                  : '行'
+                : '画像や未対応の要素を含むため直せません'
+            }
+            data-testid={`${kind}-line-${String(index)}`}
+            onChange={(e) => {
+              const text = e.target.value
+              setLines((current) =>
+                current.map((l, i) => (i === index ? { ...l, text } : l))
+              )
+              setSaved(false)
+            }}
+          />
+        </div>
+      ))}
+      <div className="wowd-dialog-row">
+        <button
+          type="button"
+          className="is-primary"
+          data-testid={`${kind}-rich-apply`}
+          onClick={() => {
+            onSave(applyEditableLines(doc, lines))
+            setSaved(true)
+          }}
+        >
+          {saved ? '適用済み' : '適用'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 const ALIGNMENTS: { value: string; label: string }[] = [

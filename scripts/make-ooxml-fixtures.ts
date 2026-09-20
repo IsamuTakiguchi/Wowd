@@ -502,7 +502,24 @@ function headerFooterDoc(): { body: string; parts: Map<string, Uint8Array> } {
       'word/header1.xml',
       hdrPart('w:hdr', `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>${text('社外秘')}</w:p>`)
     ],
-    ['word/header2.xml', hdrPart('w:hdr', para(text('先頭ページ専用のヘッダー')))],
+    [
+      'word/header2.xml',
+      // 表を含むレターヘッド。平文に潰せないので、行ごとの編集で直す
+      hdrPart(
+        'w:hdr',
+        `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>` +
+          `<w:tblGrid><w:gridCol w:w="4000"/><w:gridCol w:w="4000"/></w:tblGrid>` +
+          `<w:tr>` +
+          `<w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>` +
+          para(text('株式会社サンプル')) +
+          `</w:tc>` +
+          `<w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>` +
+          `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>${text('東京都千代田区')}</w:p>` +
+          `</w:tc>` +
+          `</w:tr></w:tbl>` +
+          para(text('先頭ページ専用のヘッダー'))
+      )
+    ],
     [
       'word/footer1.xml',
       hdrPart(
