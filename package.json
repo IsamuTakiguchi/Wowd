@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "description": "Word ライクな日本語文書エディタ",
   "main": "./out/main/index.js",
-  "author": "IsamuTakiguchi",
+  "author": {
+    "name": "IsamuTakiguchi",
+    "email": "IsamuTakiguchi@users.noreply.github.com"
+  },
+  "desktopName": "wowd.desktop",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -24,6 +28,7 @@
     "schema:fetch": "tsx scripts/fetch-ooxml-schema.ts",
     "schema:validate": "tsx scripts/validate-ooxml.ts",
     "e2e": "playwright test",
+    "icon": "tsx scripts/make-icon.ts",
     "package": "npm run build && electron-builder"
   },
   "devDependencies": {

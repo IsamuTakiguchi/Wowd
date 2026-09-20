@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2F4F8F"/>
+      <stop offset="1" stop-color="#1E3566"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12.288" stdDeviation="16.384" flood-color="#0B1A38" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="225.28" fill="url(#bg)"/>
+  <g filter="url(#sh)">
+    <rect x="204.8" y="143.36" width="614.4" height="737.28" rx="35.84" fill="#FFFFFF"/>
+  </g>
+  <rect x="290.81600000000003" y="320.30719999999997" width="380.928" height="46.08" rx="22.528" fill="#3E5C97" opacity="0.85"/>
+  <rect x="290.81600000000003" y="438.272" width="380.928" height="46.08" rx="22.528" fill="#3E5C97" opacity="0.85"/>
+  <rect x="290.81600000000003" y="556.2368" width="380.928" height="46.08" rx="22.528" fill="#3E5C97" opacity="0.85"/>
+  <rect x="290.81600000000003" y="674.2016" width="258.048" height="46.08" rx="22.528" fill="#3E5C97" opacity="0.85"/>
+  <rect x="708.608" y="231.8336" width="35.84" height="560.3328" rx="17.408" fill="#C8382F"/>
+</svg>

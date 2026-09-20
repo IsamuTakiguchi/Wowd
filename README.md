@@ -299,3 +299,19 @@ Word 16 が書いた実物を `tests/fixtures/docx/real-*.docx` に置けば、
 ## ライセンス
 
 MIT
+
+## 配布
+
+```bash
+npm run icon       # アイコンを作り直す (原本は resources/icon.svg)
+npm run package    # いまの環境向けにパッケージする
+```
+
+Linux の AppImage と deb は生成と起動まで確認済み。
+Windows の `.exe` と macOS の `.dmg` は、それぞれその環境でしか作れない。
+
+**電子署名は未実施。**無くても動くが、Windows は SmartScreen が警告し、
+macOS は Gatekeeper が起動を止める。証明書の取得は本人確認が要るので
+利用者本人の手続きになる。
+
+手順とつまずきどころは **`docs/release.md`** にまとめてある。

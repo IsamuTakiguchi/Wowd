@@ -1,6 +1,7 @@
 import { Menu, app, BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import { IPC, type MenuCommand } from '../shared/ipc'
 import { getRecent } from './ipc/recent'
+import { checkForUpdates } from './update'
 
 function send(cmd: MenuCommand): void {
   BrowserWindow.getFocusedWindow()?.webContents.send(IPC.menuCommand, cmd)
@@ -148,7 +149,12 @@ export async function buildMenu(): Promise<void> {
     },
     {
       label: 'ヘルプ(&H)',
-      submenu: [{ label: 'Wowd について', click: () => send({ kind: 'help.about' }) }]
+      submenu: [
+        // 自動では確認しない。選んだときだけ外部へ問い合わせる
+        { label: '更新を確認...', click: () => void checkForUpdates() },
+        { type: 'separator' },
+        { label: 'Wowd について', click: () => send({ kind: 'help.about' }) }
+      ]
     }
   ]
 
