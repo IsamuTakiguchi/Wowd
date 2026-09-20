@@ -89,6 +89,7 @@ describe('ヘッダー / フッターの平文化', () => {
           cx: 100,
           cy: 100,
           wrap: 'inline',
+        align: null,
           name: '',
           descr: '',
           inline: true,

@@ -251,7 +251,23 @@ export function readDocx(bytes: Uint8Array, filePath: string | null = null): Rea
     filePath,
     doc,
     resources,
-    unsupported: [...ctx.unsupported].sort(),
+    unsupported: [...unsupportedLayout(resources), ...ctx.unsupported].sort(),
     pkg
   }
+}
+
+/**
+ * 読み取りも往復もできるが、**画面に描けない**指定を拾う。
+ *
+ * 黙って 1 段で描くと、利用者は「Wowd で開いたら段組みが消えた」と思う。
+ * 実際には保存すれば元のまま書き戻されるので、消えてはいない。
+ * それを知らせるために、未対応として名前を挙げる。
+ *
+ * ページ分割が「1 本の縦の流れ + 空白の挿し込み」でできているため、
+ * 段を横に並べる描画がそもそも載らない。直すにはページ分割の作りから変える。
+ */
+function unsupportedLayout(resources: WowdResources): string[] {
+  const out: string[] = []
+  if (resources.sections.some((s) => (s.cols?.num ?? 1) > 1)) out.push('段組み')
+  return out
 }

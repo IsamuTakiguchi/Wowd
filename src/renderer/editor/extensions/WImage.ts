@@ -1,6 +1,8 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { emuToPx } from '@shared/units'
 import { mediaRegistry } from '../media'
+import { imageWrapStyle } from '@core/css/imageCss'
+import type { ImageNode } from '@core/model/types'
 
 /**
  * w:drawing — 画像。
@@ -24,6 +26,7 @@ export const WImage = Node.create({
       cx: carry<number>(0),
       cy: carry<number>(0),
       wrap: carry<string>('inline'),
+      align: carry<string | null>(null),
       name: carry<string>(''),
       descr: carry<string>(''),
       inline: carry<boolean>(true),
@@ -43,11 +46,16 @@ export const WImage = Node.create({
     // 画像の中身は文書の中にバイト列で入っているので blob URL に変える
     const src = mediaRegistry.get(mediaKey)
 
+    // 回り込み。PDF と同じ写し方を使う (core/css/imageCss.ts)
+    const wrap = imageWrapStyle(node.attrs as ImageNode['attrs'])
+
     return [
       'img',
       mergeAttributes(HTMLAttributes, {
         'data-wowd-image': mediaKey,
+        'data-wrap': String(node.attrs['wrap'] ?? 'inline'),
         class: 'wowd-image',
+        style: wrap || undefined,
         // 解決できない画像も枠だけ出す。消えるとレイアウトがずれて
         // 「何かあったはず」ということすら分からなくなる
         src: src ?? undefined,

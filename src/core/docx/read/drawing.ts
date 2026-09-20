@@ -1,5 +1,5 @@
 import type { ImageNode } from '../../model/types'
-import { type XNode, tagOf, childrenOf, attr, intAttr, findChild, buildXml } from '../xml'
+import { type XNode, tagOf, childrenOf, attr, intAttr, findChild, textOf, buildXml } from '../xml'
 
 /**
  * w:drawing を読む。
@@ -41,6 +41,7 @@ export function readDrawing(
       cx: intAttr(extent, 'cx') ?? 0,
       cy: intAttr(extent, 'cy') ?? 0,
       wrap: inline ? 'inline' : wrapOf(container),
+      align: inline ? null : alignOf(container),
       name: attr(docPr, 'name') ?? '',
       descr: attr(docPr, 'descr') ?? '',
       inline,
@@ -49,6 +50,24 @@ export function readDrawing(
       rawDrawing: buildXml([drawing])
     }
   }
+}
+
+/**
+ * wp:positionH の横位置。
+ *
+ * 回り込みを左右どちらに出すかはこれで決まる。
+ * posOffset (座標指定) のときは null にする。
+ * 座標をそのまま CSS に写すと、行の流れと合わずかえってずれるため
+ */
+function alignOf(anchor: XNode): ImageNode['attrs']['align'] {
+  const positionH = findChild(anchor, 'wp:positionH')
+  if (!positionH) return null
+  for (const child of childrenOf(positionH)) {
+    if (tagOf(child) !== 'wp:align') continue
+    const value = textOf(child).trim()
+    if (value === 'left' || value === 'right' || value === 'center') return value
+  }
+  return null
 }
 
 /** wp:anchor の回り込み指定 */

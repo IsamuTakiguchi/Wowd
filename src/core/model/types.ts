@@ -214,6 +214,11 @@ export interface ImageNode {
     cx: Emu
     cy: Emu
     wrap: 'inline' | 'square' | 'tight' | 'topAndBottom' | 'behind' | 'inFront'
+    /**
+     * wp:positionH の横位置。回り込みを左右どちらに出すかを決める。
+     * null は指定が無い (座標で置かれている) ということ
+     */
+    align: 'left' | 'right' | 'center' | null
     name: string
     descr: string
     inline: boolean

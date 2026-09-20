@@ -30,6 +30,7 @@ import { twipToMm, twipToPt, halfPtToPt } from '../../shared/units'
 import { escapeXml } from '../docx/xml'
 import { resolveField } from '../fields'
 import { pickHeaderFooterRef } from '../layout/pageGeometry'
+import { imageWrapStyle } from './imageCss'
 
 export interface PrintPage {
   /** 1 始まりの表示ページ番号 */
@@ -287,7 +288,10 @@ function renderInline(node: InlineNode, input: PrintInput, ctx: FieldContext): s
       if (!src) return ''
       const w = node.attrs.cx > 0 ? ` width="${Math.round(node.attrs.cx / 12700)}pt"` : ''
       const h = node.attrs.cy > 0 ? ` height="${Math.round(node.attrs.cy / 12700)}pt"` : ''
-      return `<img src="${escapeAttr(src)}" alt="${escapeAttr(node.attrs.descr || node.attrs.name)}"${w}${h}>`
+      // 回り込みは画面と同じ写し方をする。別々に書くと見た目が食い違う
+      const wrap = imageWrapStyle(node.attrs)
+      const style = wrap ? ` style="${escapeAttr(wrap)}"` : ''
+      return `<img src="${escapeAttr(src)}" alt="${escapeAttr(node.attrs.descr || node.attrs.name)}"${w}${h}${style}>`
     }
     case 'rawRun':
       return ''

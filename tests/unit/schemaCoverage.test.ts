@@ -91,6 +91,7 @@ const IMAGE: InlineNode = {
     cx: 914400,
     cy: 914400,
     wrap: 'inline',
+    align: null,
     name: '図 1',
     descr: '',
     inline: true,
