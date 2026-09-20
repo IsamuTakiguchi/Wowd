@@ -1,6 +1,7 @@
 import { TextStyle } from '@tiptap/extension-text-style'
 import type { RunProps } from '@core/model/types'
 import { DEFAULT_RUN_PROPS, runPropsToStyle } from '@core/css/runCss'
+import { hasRunFormatChange } from '@core/revisions/formatChange'
 
 export { DEFAULT_RUN_PROPS, runPropsToStyle, fontsToCss } from '@core/css/runCss'
 
@@ -20,7 +21,11 @@ export const WRunProps = TextStyle.extend({
           const rp = attrs['runProps'] as RunProps | null
           if (!rp) return {}
           const style = runPropsToStyle(rp)
-          return style ? { style } : {}
+          // 文字書式の変更履歴 (w:rPrChange)。変わったことが分かる印を付ける
+          const changed = hasRunFormatChange(rp.rawRPr)
+            ? { 'data-format-revision': 'run', title: '文字の書式が変更されています' }
+            : {}
+          return style ? { style, ...changed } : changed
         }
       }
     }

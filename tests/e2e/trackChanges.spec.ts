@@ -239,3 +239,51 @@ test('次の変更へ移動できる', async () => {
   const selected = await page.evaluate(() => window.getSelection()?.toString() ?? '')
   expect(selected.length).toBeGreaterThan(0)
 })
+
+test('記録中に書式を変えると履歴に残る', async () => {
+  await openFixture('01-plain.docx')
+  await openReviewTab()
+  await page.locator('[data-testid="revision-author"]').fill('書式テスト者')
+  await setTracking(true)
+  await caretAtStart()
+
+  // 先頭の 4 文字を選んで太字にする
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight')
+  await page.locator('button[role="tab"]', { hasText: 'ホーム' }).click()
+  await page.locator('button[title="太字"]').click()
+
+  // 書式が変わったことが印として出る
+  await expect(page.locator('.wowd-content [data-format-revision="run"]')).toHaveCount(1)
+
+  // 保存して開き直しても残る (w:rPrChange として書き出されている)
+  await saveAndReopen()
+  await expect(page.locator('.wowd-content [data-format-revision="run"]')).toHaveCount(1)
+  await expect(page.locator('.wowd-content [data-format-revision="run"]')).toHaveAttribute(
+    'title',
+    /書式/
+  )
+})
+
+test('書式の変更を取り消すと元の書式に戻る', async () => {
+  await openFixture('01-plain.docx')
+  // このフィクスチャには元から太字がある。増減で見る
+  const before = await page.locator('.wowd-content strong').count()
+
+  await setTracking(true)
+  await caretAtStart()
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight')
+  await page.locator('button[role="tab"]', { hasText: 'ホーム' }).click()
+  await page.locator('button[title="太字"]').click()
+  await expect(page.locator('.wowd-content [data-format-revision="run"]')).toHaveCount(1)
+  await expect(page.locator('.wowd-content strong')).toHaveCount(before + 1)
+
+  await setTracking(false)
+  await openReviewTab()
+  await page.locator('button[title="文書中のすべての変更を取り消す"]').click()
+
+  await expect(page.locator('.wowd-content [data-format-revision="run"]')).toHaveCount(0)
+  await expect(
+    page.locator('.wowd-content strong'),
+    '取り消しても太字が残っている'
+  ).toHaveCount(before)
+})

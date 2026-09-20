@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/react'
 import type { RunProps, ParagraphAttrs, Justification } from '@core/model/types'
 import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
+import { recordRunFormatChange, recordParaFormatChange } from '../track/formatRevision'
 
 /** 選択範囲の現在の rPr を読む。複数マークがある場合は先頭のものを返す */
 export function currentRunProps(editor: Editor | null): RunProps | null {
@@ -11,6 +12,8 @@ export function currentRunProps(editor: Editor | null): RunProps | null {
 
 /** rPr の一部だけを差し替える。他の項目は保つ */
 export function patchRunProps(editor: Editor, patch: Partial<RunProps>): void {
+  // 記録中なら、変える**前**に変更前の書式を抱えさせる
+  recordRunFormatChange(editor)
   const base = currentRunProps(editor) ?? DEFAULT_RUN_PROPS
   const next: RunProps = { ...base, ...patch }
   const empty = (Object.keys(DEFAULT_RUN_PROPS) as (keyof RunProps)[]).every(
@@ -33,7 +36,20 @@ export function currentParagraphAttrs(editor: Editor | null): Partial<ParagraphA
 
 /** 段落属性の一部を差し替える。段落と見出しのどちらにも効く */
 export function patchParagraph(editor: Editor, patch: Partial<ParagraphAttrs>): void {
-  editor.chain().focus().updateAttributes(currentBlockName(editor), patch).run()
+  const name = currentBlockName(editor)
+  recordParaFormatChange(editor, name)
+  editor.chain().focus().updateAttributes(name, patch).run()
+}
+
+/**
+ * 太字などのマークを切り替える。
+ *
+ * リボンから editor.chain().toggleBold() を直に呼ぶと記録を挟めない。
+ * 書式を変える経路はすべてここを通す
+ */
+export function toggleRunMark(editor: Editor, name: string): void {
+  recordRunFormatChange(editor)
+  editor.chain().focus().toggleMark(name).run()
 }
 
 export function setAlignment(editor: Editor, jc: Justification | null): void {
@@ -63,6 +79,7 @@ export function changeIndent(editor: Editor, direction: 1 | -1): void {
 }
 
 export function applyStyle(editor: Editor, styleId: string): void {
+  recordParaFormatChange(editor, currentBlockName(editor))
   const level = /^Heading([1-9])$/.exec(styleId)
   if (level) {
     editor
@@ -77,6 +94,7 @@ export function applyStyle(editor: Editor, styleId: string): void {
 
 /** 選択範囲の文字書式をすべて外す。段落書式には触らない */
 export function clearFormatting(editor: Editor): void {
+  recordRunFormatChange(editor)
   editor.chain().focus().unsetAllMarks().run()
 }
 

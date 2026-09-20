@@ -5,6 +5,7 @@ import { t } from '../../i18n/ja'
 import {
   currentRunProps,
   patchRunProps,
+  toggleRunMark,
   currentParagraphAttrs,
   setAlignment,
   setLineSpacing,
@@ -132,28 +133,28 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
             title={t.ribbon.bold}
             disabled={disabled}
             active={editor?.isActive('bold') ?? false}
-            onClick={run((e) => e.chain().focus().toggleBold().run())}
+            onClick={run((e) => toggleRunMark(e, 'bold'))}
           />
           <RibbonButton
             label={<i>I</i>}
             title={t.ribbon.italic}
             disabled={disabled}
             active={editor?.isActive('italic') ?? false}
-            onClick={run((e) => e.chain().focus().toggleItalic().run())}
+            onClick={run((e) => toggleRunMark(e, 'italic'))}
           />
           <RibbonButton
             label={<u>U</u>}
             title={t.ribbon.underline}
             disabled={disabled}
             active={editor?.isActive('underline') ?? false}
-            onClick={run((e) => e.chain().focus().toggleUnderline().run())}
+            onClick={run((e) => toggleRunMark(e, 'underline'))}
           />
           <RibbonButton
             label={<s>S</s>}
             title={t.ribbon.strike}
             disabled={disabled}
             active={editor?.isActive('strike') ?? false}
-            onClick={run((e) => e.chain().focus().toggleStrike().run())}
+            onClick={run((e) => toggleRunMark(e, 'strike'))}
           />
           <RibbonButton
             label={

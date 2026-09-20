@@ -6,6 +6,13 @@ import { buildExtensions } from '@renderer/editor/extensions'
 import { buildTrackingTransaction, isoNow, nextRevisionId } from '@renderer/editor/track/track'
 import { applyAllRevisions, revisionRanges, findRevision } from '@renderer/editor/track/apply'
 import { DEFAULT_PARAGRAPH_ATTRS } from '@renderer/editor/extensions/paragraphAttrs'
+import {
+  withRunFormatChange,
+  withParaFormatChange,
+  hasRunFormatChange,
+  hasParaFormatChange
+} from '@core/revisions/formatChange'
+import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
 
 /**
  * 変更履歴の不変条件。
@@ -277,5 +284,81 @@ describe('選択の扱い', () => {
     const marked = tracked(withSelection, (tr) => tr.delete(3, 4))
     expect(marked.selection.from).toBeLessThanOrEqual(marked.doc.content.size)
     expect(marked.selection.from).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('書式の変更履歴', () => {
+  /**
+   * 挿入・削除と違い、書式の変更は prosemirror-changeset の差分に出ない
+   * (中身が同じなので)。記録は書式コマンド側で明示的に行う。
+   *
+   * ここで押さえるのは、挿入・削除と**同じ不変条件**が成り立つこと:
+   *   すべて承諾した姿 = 記録しなかった場合の姿
+   *   すべて取り消した姿 = 編集前の姿
+   * ここを落とすと「元に戻す」で書式だけが戻らない。
+   */
+  const META = { id: 50, author: '校閲者', date: '2026-01-01T00:00:00Z' }
+
+  /** 段落の 1〜4 文字目を太字にし、変更前の書式を抱えさせる */
+  function boldWithRecord(state: EditorState): EditorState {
+    const textStyle = schema.marks['textStyle']!
+    const tr = state.tr
+    // 記録: 変更前 (書式なし) を w:rPrChange として抱える
+    tr.addMark(
+      1,
+      4,
+      textStyle.create({
+        runProps: { ...DEFAULT_RUN_PROPS, rawRPr: withRunFormatChange(null, [], META) }
+      })
+    )
+    tr.addMark(1, 4, schema.marks['bold']!.create())
+    return state.apply(tr)
+  }
+
+  it('承諾すると記録が外れ、書式は残る', () => {
+    const before = stateOf('あいうえお')
+    const changed = boldWithRecord(before)
+    const accepted = acceptAll(changed)
+
+    const node = accepted.doc.nodeAt(1)
+    expect(node?.marks.some((m) => m.type.name === 'bold'), '書式が消えた').toBe(true)
+    const props = node?.marks.find((m) => m.type.name === 'textStyle')?.attrs['runProps'] as {
+      rawRPr: string | null
+    } | null
+    expect(hasRunFormatChange(props?.rawRPr ?? null), '記録が残っている').toBe(false)
+  })
+
+  it('取り消すと編集前の書式に戻る', () => {
+    const before = stateOf('あいうえお')
+    const changed = boldWithRecord(before)
+    const rejected = rejectAll(changed)
+
+    const node = rejected.doc.nodeAt(1)
+    expect(node?.marks.some((m) => m.type.name === 'bold'), '太字が残っている').toBe(false)
+    const props = node?.marks.find((m) => m.type.name === 'textStyle')?.attrs['runProps'] as {
+      rawRPr: string | null
+    } | null
+    expect(hasRunFormatChange(props?.rawRPr ?? null), '記録が残っている').toBe(false)
+    expect(textOf(rejected.doc)).toEqual(textOf(before.doc))
+  })
+
+  it('段落書式も承諾と取り消しに従う', () => {
+    const before = stateOf('あいうえお')
+    const tr = before.tr
+    const node = before.doc.child(0)
+    tr.setNodeMarkup(0, undefined, {
+      ...node.attrs,
+      jc: 'right',
+      rawPPr: withParaFormatChange(null, { ...node.attrs, jc: 'center' } as never, new Map(), META)
+    })
+    const changed = before.apply(tr)
+
+    const accepted = acceptAll(changed)
+    expect(accepted.doc.child(0).attrs['jc'], '承諾で書式が戻ってしまった').toBe('right')
+    expect(hasParaFormatChange(accepted.doc.child(0).attrs['rawPPr'] as string | null)).toBe(false)
+
+    const rejected = rejectAll(changed)
+    expect(rejected.doc.child(0).attrs['jc'], '取り消しで書式が戻らなかった').toBe('center')
+    expect(hasParaFormatChange(rejected.doc.child(0).attrs['rawPPr'] as string | null)).toBe(false)
   })
 })

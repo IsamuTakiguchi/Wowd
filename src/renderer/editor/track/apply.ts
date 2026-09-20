@@ -1,5 +1,15 @@
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
+import type { ParagraphAttrs, RunProps } from '@core/model/types'
+import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
+import {
+  hasRunFormatChange,
+  hasParaFormatChange,
+  stripRunFormatChange,
+  stripParaFormatChange,
+  restoredRunMarks,
+  restoredParaAttrs
+} from '@core/revisions/formatChange'
 
 /**
  * 変更の承諾と取り消し。
@@ -62,6 +72,93 @@ function paragraphRevisions(
 }
 
 /**
+ * 書式の変更 (w:rPrChange / w:pPrChange) を承諾または取り消す。
+ *
+ * 承諾 = 記録を外して今の書式を残す
+ * 取り消し = 変更前の書式に戻して記録を外す
+ *
+ * これを飛ばすと「すべて元に戻す」で書式だけが戻らず、
+ * **取り消したはずの書式が残る。**挿入・削除だけ見ていたときはそうなっていた。
+ */
+function applyFormatRevisions(
+  tr: Transaction,
+  state: EditorState,
+  action: RevisionAction,
+  from: number,
+  to: number
+): void {
+  const textStyle = state.schema.marks['textStyle']
+
+  // 段落。後ろから処理する
+  const paras: { pos: number; node: PMNode }[] = []
+  tr.doc.nodesBetween(from, Math.min(to, tr.doc.content.size), (node, pos) => {
+    if (!node.isTextblock) return true
+    const attrs = node.attrs as ParagraphAttrs
+    if (hasParaFormatChange(attrs.rawPPr)) paras.push({ pos, node })
+    return false
+  })
+  for (let i = paras.length - 1; i >= 0; i--) {
+    const entry = paras[i]
+    if (!entry) continue
+    const attrs = entry.node.attrs as ParagraphAttrs
+    const restored = action === 'reject' ? restoredParaAttrs(attrs.rawPPr) : null
+    tr.setNodeMarkup(entry.pos, undefined, {
+      ...attrs,
+      ...(restored ?? {}),
+      rawPPr: stripParaFormatChange(restored ? (restored.rawPPr ?? null) : attrs.rawPPr)
+    })
+  }
+
+  if (!textStyle) return
+
+  // ラン。位置がずれないよう後ろから
+  const runs: { from: number; to: number; props: RunProps }[] = []
+  tr.doc.nodesBetween(from, Math.min(to, tr.doc.content.size), (node, pos) => {
+    if (!node.isText) return true
+    const props = (node.marks.find((m) => m.type.name === 'textStyle')?.attrs['runProps'] ??
+      null) as RunProps | null
+    if (props && hasRunFormatChange(props.rawRPr)) {
+      runs.push({ from: pos, to: pos + node.nodeSize, props })
+    }
+    return true
+  })
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const run = runs[i]
+    if (!run) continue
+    const start = Math.max(from, run.from)
+    const end = Math.min(to, run.to)
+    if (end <= start) continue
+
+    if (action === 'accept') {
+      tr.addMark(
+        start,
+        end,
+        textStyle.create({ runProps: { ...run.props, rawRPr: stripRunFormatChange(run.props.rawRPr) } })
+      )
+      continue
+    }
+
+    // 取り消し: 変更前のマークに戻す。いまのマークは一度すべて外す
+    const restored = restoredRunMarks(run.props.rawRPr) ?? []
+    for (const type of Object.values(state.schema.marks)) {
+      if (type.name === 'insertion' || type.name === 'deletion' || type.name === 'comment') continue
+      tr.removeMark(start, end, type)
+    }
+    for (const mark of restored) {
+      const type = state.schema.marks[mark.type]
+      if (!type) continue
+      const attrs =
+        mark.type === 'textStyle'
+          ? { runProps: { ...DEFAULT_RUN_PROPS, ...('attrs' in mark ? mark.attrs : {}) } }
+          : 'attrs' in mark
+            ? (mark.attrs as Record<string, unknown>)
+            : undefined
+      tr.addMark(start, end, type.create(attrs as never))
+    }
+  }
+}
+
+/**
  * 指定範囲の変更を承諾または取り消す。
  *
  * 後ろから処理する。位置がずれるのを避けるため。
@@ -107,6 +204,9 @@ export function applyRevisions(
     }
     tr.removeMark(range.from, range.to, range.kind === 'insertion' ? insertion : deletion)
   }
+
+  // 書式の変更は最後に片づける。本文を消したあとの位置で処理する
+  applyFormatRevisions(tr, state, action, Math.min(from, tr.doc.content.size), Math.min(to, tr.doc.content.size))
 
   return tr.steps.length > 0 ? tr : null
 }

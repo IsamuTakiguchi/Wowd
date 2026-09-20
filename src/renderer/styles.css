@@ -940,3 +940,40 @@ body {
   color: var(--muted);
   font-size: 10px;
 }
+
+/*
+ * 書式の変更履歴 (w:rPrChange / w:pPrChange)。
+ *
+ * 挿入・削除と違って文字そのものは変わらないので、
+ * 下線や取り消し線では表せない。Word も左余白の線と
+ * 校閲ウィンドウの記載で知らせる。ここでは控えめな下線で示す。
+ */
+.wowd-content [data-format-revision='run'] {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #7a5af8;
+  text-underline-offset: 0.2em;
+}
+
+.wowd-content [data-format-revision='para'] {
+  position: relative;
+}
+
+.wowd-content [data-format-revision='para']::before {
+  content: '';
+  position: absolute;
+  left: -0.6em;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #7a5af8;
+}
+
+/* 表示モード。変更前の姿では印を出さない */
+.wowd-viewport[data-revisions='original'] [data-format-revision='run'] {
+  text-decoration: none;
+}
+
+.wowd-viewport[data-revisions='original'] [data-format-revision='para']::before {
+  display: none;
+}
