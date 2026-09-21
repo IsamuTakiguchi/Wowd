@@ -32,7 +32,9 @@ jobs:
           - os: windows-latest
             label: Windows
             target: --win
-            files: release/Wowd-Setup-*.exe
+            files: |
+              release/Wowd-Setup-*.exe
+              release/Wowd-*-win.zip
           - os: macos-latest
             label: macOS
             target: --mac
@@ -102,7 +104,7 @@ jobs:
 
           | 環境 | ファイル |
           |---|---|
-          | Windows | `Wowd-Setup-*.exe` |
+          | Windows | `Wowd-Setup-*.exe` (インストーラ) / `Wowd-*-win.zip` (展開して動く) |
           | macOS | `*.dmg` |
           | Linux | `*.AppImage` / `*.deb` |
 
