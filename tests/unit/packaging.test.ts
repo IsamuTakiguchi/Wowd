@@ -46,3 +46,38 @@ describe('配布設定', () => {
     expect(pkg.author?.email, 'author.email が無いと .deb を作れない').toBeTruthy()
   })
 })
+
+describe('Windows の成果物の名前', () => {
+  const builder = read('electron-builder.yml')
+  const release = read('.github/workflows/release.yml')
+
+  /**
+   * win.artifactName は **win の全 target に効く**。
+   * インストーラと持ち運び版が同じ名前規則になると、
+   * リリースの glob が片方しか拾わない (実際に zip が配られていなかった)。
+   */
+  it('インストーラと持ち運び版で名前が分かれている', () => {
+    const win = /^win:\n(?:[ \t].*\n|\n)*/m.exec(builder)?.[0] ?? ''
+    const nsis = /^nsis:\n(?:[ \t].*\n|\n)*/m.exec(builder)?.[0] ?? ''
+    const winName = /artifactName:\s*(\S+)/.exec(win)?.[1]
+    const nsisName = /artifactName:\s*(\S+)/.exec(nsis)?.[1]
+
+    expect(winName, 'win.artifactName が無い').toBeTruthy()
+    expect(nsisName, 'nsis.artifactName が無い (インストーラが zip と同じ名前になる)').toBeTruthy()
+    expect(winName).not.toBe(nsisName)
+  })
+
+  it('リリースの glob が両方を拾える', () => {
+    // 実際に出る名前
+    const installer = 'Wowd-Setup-0.1.3.exe'
+    const portable = 'Wowd-0.1.3-win.zip'
+    // ワークフローに書いてある glob
+    const globs = [...release.matchAll(/release\/(\S+)/g)].map((m) => m[1] as string)
+
+    const matches = (glob: string, name: string): boolean =>
+      new RegExp('^' + glob.replace(/[.]/g, '\\.').replace(/\*/g, '.*') + '$').test(name)
+
+    expect(globs.some((g) => matches(g, installer)), 'インストーラを拾う glob が無い').toBe(true)
+    expect(globs.some((g) => matches(g, portable)), '持ち運び版を拾う glob が無い').toBe(true)
+  })
+})
