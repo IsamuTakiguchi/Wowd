@@ -86,3 +86,26 @@ Chromium (PC の設定と Pixel 7 の設定) で、起動・開く・編集・�
 | GitHub Pages | 手軽。URL 1 本で配れる | **非公開リポジトリでは有料プランが要る** |
 | 事務所のサーバ | 外に出したくない | https でないと共有シートや PWA が効かない |
 | 手元の PC (`web:preview`) | まず触ってみる | 同じ Wi-Fi のスマホから `http://<PC の IP>:4173` で開ける。https でないので共有シートは使えず、ダウンロードになる |
+
+## ホーム画面に追加 (PWA) とオフライン
+
+`web/manifest.webmanifest` と `web/sw.js` がその仕組み。
+ビルド時に `vite.web.config.ts` が `dist-web/` の入口と同じ階層に出す
+(サービスワーカーは入口より深い場所に置くと画面全体を担当できない)。
+
+- サービスワーカーはブラウザ版でだけ登録する (`src/renderer/main.tsx`)。
+  Electron 版と `file:` では登録しない
+- 入口 (`index.html`) は毎回ネットワークを先に見る。更新で古い画面が残らないように。
+  ハッシュ付きの `assets/` は中身が変わると名前も変わるので、キャッシュを先に見てよい
+- キャッシュ名にバージョンが入る (`wowd-0.1.1`)。版が上がると古いキャッシュを捨てる
+- 文書そのものはサービスワーカーでは扱わない (IndexedDB 側の仕事)
+- `file_handlers` により、Android の Chrome では「.docx をこのアプリで開く」が出る
+
+## GitHub Pages に置く手順
+
+1. リポジトリの Settings → Pages → Source を **GitHub Actions** にする (1 回だけ)
+2. `web-v0.1.1` のようなタグを打つ。`.github/workflows/pages.yml` がビルドして置く
+3. Actions が終わると `https://<ユーザー名>.github.io/Wowd/` で開ける
+
+非公開リポジトリでは Pages に有料プランが要る。
+その場合は `npm run web:build` の `dist-web/` をそのまま事務所のサーバに置く。

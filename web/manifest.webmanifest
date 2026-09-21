@@ -1,0 +1,23 @@
+{
+  "name": "Wowd",
+  "short_name": "Wowd",
+  "description": "日本語の文書エディタ。Word 文書 (.docx) を読み書きする",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2F4F8F",
+  "icons": [
+    { "src": "./icon-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
+      }
+    }
+  ]
+}

@@ -18,6 +18,11 @@ export default tseslint.config(
     languageOptions: { globals: globals.node }
   },
   {
+    // Web 版の service worker。ブラウザの window ではなく worker のグローバルで動く
+    files: ['web/**/*.js'],
+    languageOptions: { globals: globals.serviceworker }
+  },
+  {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error'

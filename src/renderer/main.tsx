@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { useDocumentStore } from './store/document'
 import './styles.css'
-import { platform } from './platform'
+import { platform, isElectron } from './platform'
 
 // E2E テストからファイルを読み込ませるための入口。
 // preload 経由の API しか公開していないので、ここが無いとテストが実ファイルを開けない。
@@ -27,6 +27,17 @@ import { platform } from './platform'
     const { saveRecoveryNow } = await import('./store/autosave')
     return saveRecoveryNow()
   }
+
+// ブラウザ版でだけサービスワーカーを登録する。
+// 「ホーム画面に追加」の条件であり、一度開いたあとは電波が無くても起動できる。
+// Electron 版には要らず、file: では登録できない
+if (!isElectron && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // 登録できなくても画面は動く。オフラインで開けないだけ
+    })
+  })
+}
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root が見つかりません')

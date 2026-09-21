@@ -1,0 +1,48 @@
+name: ブラウザ版を GitHub Pages に置く
+
+# web-v0.1.1 のようなタグを打つと、ブラウザ版をビルドして Pages に置く。
+#   git tag web-v0.1.1 && git push origin web-v0.1.1
+#
+# 事前に 1 回だけ、リポジトリの Settings → Pages → Source を
+# 「GitHub Actions」にしておく必要がある。
+# 非公開リポジトリでは Pages に有料プランが要る (GitHub の制約)。
+on:
+  push:
+    tags: ['web-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run web:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

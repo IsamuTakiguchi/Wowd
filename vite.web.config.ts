@@ -31,7 +31,23 @@ export default defineConfig({
       '@renderer': resolve('src/renderer')
     }
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // manifest と sw.js は Vite が拾わない静的ファイル。
+      // SW は入口と同じ階層に無いと画面全体を担当できないので、ここで root に出す
+      name: 'wowd-web-static',
+      generateBundle() {
+        for (const name of ['manifest.webmanifest', 'sw.js']) {
+          this.emitFile({
+            type: 'asset',
+            fileName: name,
+            source: readFileSync(resolve('web', name), 'utf8').replace('__APP_VERSION__', pkg.version)
+          })
+        }
+      }
+    }
+  ],
   build: {
     outDir: resolve('dist-web'),
     emptyOutDir: true,
