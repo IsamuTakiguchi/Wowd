@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { buildExtensions } from './extensions'
+import { Selection } from '@tiptap/pm/state'
 import { fromWowdDoc } from './serialize/fromWowdDoc'
 import { toWowdDoc } from './serialize/toWowdDoc'
 import { useDocumentStore } from '../store/document'
@@ -61,6 +62,7 @@ export function WowdEditor({
   // 拡張一覧は初回だけ作る。毎回作り直すとエディタが再生成される
   const [extensions] = useState(() => [...buildExtensions(), PaginationExtension])
 
+
   const editor = useEditor({
     extensions,
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -77,6 +79,43 @@ export function WowdEditor({
   useEffect(() => {
     onReady(editor)
   }, [editor, onReady])
+
+  /**
+   * 紙の上の、本文ではない場所をクリックしたときにカーソルを置く。
+   *
+   * ProseMirror が扱うのは本文 (.wowd-content) の中のクリックだけ。
+   * 用紙の余白や、短い文書の下に広がる何もない所を押すと
+   * **フォーカスが外れ、打っても何も入らない。**
+   * 新規文書は本文が先頭の 1 行しか無いので、紙の真ん中を押して
+   * 何も起きないのが最初の体験になってしまう。実機で報告があった。
+   *
+   * Word と同じく、いちばん近い本文の位置にカーソルを置く。
+   * 横は本文の幅に収めるので、左の余白なら行頭、右の余白なら行末に付く。
+   * 縦は本文の中に収めるので、本文より下なら最後の行、上なら先頭の行に付く。
+   */
+  const handleStageMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!editor || e.button !== 0) return
+      const content = editor.view.dom
+      // 本文の中は ProseMirror に任せる。ここで奪うと範囲選択ができなくなる
+      if (content.contains(e.target as Node)) return
+
+      const box = content.getBoundingClientRect()
+      const left = Math.min(Math.max(e.clientX, box.left + 1), box.right - 1)
+      const top = Math.min(Math.max(e.clientY, box.top + 1), box.bottom - 1)
+      const found = editor.view.posAtCoords({ left, top })
+      const { doc } = editor.state
+      const pos = found ? found.pos : e.clientY < box.top ? 0 : doc.content.size
+      // 段落の境目などテキストの無い位置に当たることがあるので、近い位置へ寄せる
+      const selection = Selection.near(doc.resolve(Math.min(pos, doc.content.size)), e.clientY < box.top ? 1 : -1)
+
+      // 既定の動作に任せると、ブラウザがフォーカスを紙の div へ移してしまう
+      e.preventDefault()
+      editor.view.dispatch(editor.state.tr.setSelection(selection).scrollIntoView())
+      editor.view.focus()
+    },
+    [editor]
+  )
 
   // 画面を閉じるときに blob URL を解放する
   useEffect(() => () => mediaRegistry.clear(), [])
@@ -214,6 +253,7 @@ export function WowdEditor({
             className={isPrintView ? 'wowd-stage' : 'wowd-stage wowd-stage-draft'}
             style={{ width: geometry.pageInline, height: naturalHeight }}
             data-testid="wowd-page"
+            onMouseDown={handleStageMouseDown}
           >
             {isPrintView && <PageChrome layout={layout} resources={resources} />}
             <div
