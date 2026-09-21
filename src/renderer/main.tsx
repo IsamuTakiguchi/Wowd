@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { useDocumentStore } from './store/document'
 import './styles.css'
+import { platform } from './platform'
 
 // E2E テストからファイルを読み込ませるための入口。
 // preload 経由の API しか公開していないので、ここが無いとテストが実ファイルを開けない。
@@ -16,7 +17,7 @@ import './styles.css'
   const { getPrintPayload } = await import('./print/exportPdf')
   const payload = getPrintPayload()
   if (!payload) throw new Error('印刷用の文書を組み立てられませんでした')
-  return window.wowd.printToPdf({ ...payload, targetPath })
+  return platform.printToPdf({ ...payload, targetPath })
 }
 
 // E2E から自動保存を待たずに退避させるための入口。

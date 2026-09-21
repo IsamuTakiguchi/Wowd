@@ -992,3 +992,40 @@ body {
 .wowd-chrome-table p {
   margin: 0;
 }
+
+/* ── ブラウザ版のファイル操作 (Electron 版ではネイティブメニューが担う) ── */
+.file-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.file-actions button {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.file-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.file-actions button.is-dirty {
+  border-color: var(--ribbon-accent);
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+/* 指で押す端末では、押し損ねない大きさにする (44px は iOS の指針) */
+@media (pointer: coarse) {
+  .file-actions button {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 15px;
+  }
+}

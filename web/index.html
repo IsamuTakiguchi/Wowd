@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      ブラウザ版の入口。Electron 版の src/renderer/index.html と分けている。
+      画面の中身は同じ main.tsx で、違うのは次の 3 つ:
+        - スマホの画面幅に合わせる viewport
+        - PWA の manifest (ホーム画面に追加できる)
+        - 印刷用の iframe と共有を許す CSP
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; worker-src 'self' blob:; frame-src 'self' about:; connect-src 'self'"
+    />
+    <meta name="theme-color" content="#2F4F8F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Wowd" />
+    <link rel="icon" href="./icon-256.png" />
+    <link rel="apple-touch-icon" href="./icon-256.png" />
+    <title>Wowd</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/renderer/main.tsx"></script>
+  </body>
+</html>

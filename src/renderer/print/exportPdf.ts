@@ -4,6 +4,7 @@ import { buildPrintHtml, type PrintPage } from '@core/css/printHtml'
 import { toWowdDoc } from '../editor/serialize/toWowdDoc'
 import { paginationKey } from '../editor/pagination/PaginationPlugin'
 import { twipToMm } from '@shared/units'
+import { platform } from '../platform'
 
 /**
  * 画面のページ分割結果をそのまま印刷用 HTML に写して PDF にする。
@@ -75,7 +76,7 @@ export async function exportPdf(
   fileName: string
 ): Promise<{ path: string | null; pageCount: number }> {
   const payload = buildPrintPayload(editor, document_, fileName)
-  return window.wowd.printToPdf({ ...payload, targetPath: null })
+  return platform.printToPdf({ ...payload, targetPath: null })
 }
 
 /**

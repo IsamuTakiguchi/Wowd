@@ -366,6 +366,18 @@ Word 16 が書いた実物を `tests/fixtures/docx/real-*.docx` に置けば、
 
 MIT
 
+## ブラウザ版 (スマホ)
+
+同じ画面をブラウザで動かせる。iPhone / Android で開き「ホーム画面に追加」で使う。
+
+```bash
+npm run web:build && npm run web:preview   # 同じ Wi-Fi のスマホから開ける
+npm run test:web                            # PC と Pixel 7 の設定で E2E
+```
+
+画面と文書のコードは Electron 版と完全に同じで、OS に触る層
+(`src/renderer/platform`) だけが差し替わる。詳しくは **`docs/web.md`**。
+
 ## 配布
 
 ```bash

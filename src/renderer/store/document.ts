@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { WowdDocument, WowdDoc, SectionProps, CommentRecord } from '@core/model/types'
 import { docxClient } from '../workers/client'
 import { t } from '../i18n/ja'
+import { platform } from '../platform'
 
 export interface DocumentState {
   /** 開いている文書。null は未読み込み */
@@ -157,7 +158,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   async newDocument(template) {
     set({ busy: true, error: null })
     try {
-      const bytes = await window.wowd.readTemplate(template)
+      const bytes = await platform.readTemplate(template)
       const document = await docxClient.open(bytes, null)
       set({
         document,
@@ -196,7 +197,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         saveBlockedReason: null,
         loadToken: get().loadToken + 1
       })
-      if (filePath) await window.wowd.addRecent(filePath)
+      if (filePath) await platform.addRecent(filePath)
     } catch (err) {
       set({ error: `${t.file.openError}: ${message(err)}` })
     } finally {
@@ -207,7 +208,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   async openPath(path) {
     if (!(await confirmDiscardIfDirty(get))) return
     try {
-      const file = await window.wowd.openPath(path)
+      const file = await platform.openPath(path)
       await get().openBytes(file.bytes, file.path)
     } catch (err) {
       set({ error: `${t.file.openError}: ${message(err)}` })
@@ -216,7 +217,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   async openDialog() {
     if (!(await confirmDiscardIfDirty(get))) return
-    const file = await window.wowd.openDialog()
+    const file = await platform.openDialog()
     if (!file) return
     await get().openBytes(file.bytes, file.path)
   },
@@ -246,7 +247,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   async saveAs() {
     const suggested = get().filePath ?? `${t.app.untitled}.docx`
-    const target = await window.wowd.saveDialog(suggested)
+    const target = await platform.saveDialog(suggested)
     if (!target) return false
     return writeTo(target, get, set)
   }
@@ -277,8 +278,8 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
       headersChanged,
       tocChanged
     })
-    await window.wowd.writeFile(path, bytes)
-    await window.wowd.addRecent(path)
+    await platform.writeFile(path, bytes)
+    await platform.addRecent(path)
     // 保存後は出力を新しい原本とする。次の保存もここから差分を作る
     set({
       document: toSave,
@@ -302,7 +303,7 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
 async function confirmDiscardIfDirty(get: Get): Promise<boolean> {
   const state = get()
   if (!state.dirty) return true
-  return window.wowd.confirmDiscard(state.fileName())
+  return platform.confirmDiscard(state.fileName())
 }
 
 function message(err: unknown): string {

@@ -1,4 +1,5 @@
 import { useDocumentStore } from './document'
+import { platform } from '../platform'
 
 /**
  * 自動保存。
@@ -29,7 +30,7 @@ export async function saveRecoveryNow(): Promise<boolean> {
   try {
     const bytes = await state.saveToBytes()
     if (bytes.length === 0) return false
-    await window.wowd.saveRecovery(new Uint8Array(bytes), state.filePath, state.fileName())
+    await platform.saveRecovery(new Uint8Array(bytes), state.filePath, state.fileName())
     return true
   } catch {
     // 退避に失敗しても編集は続けられる。ここで騒ぐ方が害が大きい

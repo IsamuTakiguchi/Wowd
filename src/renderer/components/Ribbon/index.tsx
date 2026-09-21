@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import { HomeTab } from './HomeTab'
+import { FileActions } from './FileActions'
 import { InsertTab, LayoutTab, ViewTab, ReferencesTab, ReviewTab } from './OtherTabs'
 import { useUiStore, type RibbonTab } from '../../store/ui'
 import { useDocumentStore } from '../../store/document'
@@ -28,6 +29,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
           {fileName}
           {dirty ? t.app.dirtyMark : ''}
         </span>
+        <FileActions editor={editor} />
       </div>
       <nav className="ribbon-tabs" role="tablist">
         {TABS.map((item) => (

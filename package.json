@@ -29,6 +29,10 @@
     "schema:validate": "tsx scripts/validate-ooxml.ts",
     "e2e": "playwright test",
     "icon": "tsx scripts/make-icon.ts",
+    "web:dev": "vite --config vite.web.config.ts",
+    "web:build": "vite build --config vite.web.config.ts",
+    "web:preview": "vite preview --config vite.web.config.ts",
+    "test:web": "playwright test --config playwright.web.config.ts",
     "package": "npm run build && electron-builder"
   },
   "devDependencies": {

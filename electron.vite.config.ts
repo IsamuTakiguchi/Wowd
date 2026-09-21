@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
@@ -20,6 +21,11 @@ export default defineConfig({
   },
   renderer: {
     root: resolve('src/renderer'),
+    define: {
+      __APP_VERSION__: JSON.stringify(
+        (JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { version: string }).version
+      )
+    },
     resolve: {
       alias: {
         '@core': resolve('src/core'),

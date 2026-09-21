@@ -9,6 +9,7 @@ import { registerImage, insertImage, textWidthEmu } from '../../editor/commands/
 import { insertOrUpdateToc } from '../../editor/commands/toc'
 import { twipToMm, mmToTwip } from '@shared/units'
 import type { SectionProps } from '@core/model/types'
+import { platform } from '../../platform'
 
 /** 用紙サイズのプリセット (mm) */
 const PAPER_SIZES: { id: string; label: string; w: number; h: number }[] = [
@@ -42,7 +43,7 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
   const addImage = async (): Promise<void> => {
     if (!editor || !document_ || !section) return
     try {
-      const picked = await window.wowd.pickImage()
+      const picked = await platform.pickImage()
       if (!picked) return
       const image = registerImage(
         document_,

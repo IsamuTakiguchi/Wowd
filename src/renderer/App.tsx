@@ -15,6 +15,7 @@ import type { MenuCommand } from '@shared/ipc'
 import { exportPdf, registerPrintSource } from './print/exportPdf'
 import { startAutosave, saveRecoveryNow } from './store/autosave'
 import { RecoveryBanner } from './components/RecoveryBanner'
+import { platform } from './platform'
 
 export function App(): React.JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -122,27 +123,27 @@ export function App(): React.JSX.Element {
           nudgeZoom(cmd.delta)
           break
         case 'help.about':
-          void window.wowd
+          void platform
             .getAppInfo()
             .then((info) =>
-              window.wowd.reportError('Wowd', `バージョン ${info.version} / ${info.platform}`)
+              platform.reportError('Wowd', `バージョン ${info.version} / ${info.platform}`)
             )
           break
       }
     }
-    return window.wowd.onMenuCommand(handler)
+    return platform.onMenuCommand(handler)
   }, [editor, toggleFind, nudgeZoom, setTracking, toggleComments])
 
   // ファイル関連付けや「アプリで開く」からの起動
   useEffect(() => {
-    return window.wowd.onOpenFileRequest((path) => {
+    return platform.onOpenFileRequest((path) => {
       void useDocumentStore.getState().openPath(path)
     })
   }, [])
 
   // main 側の終了確認に答える
   useEffect(() => {
-    return window.wowd.onQueryDirty(() => useDocumentStore.getState().dirty)
+    return platform.onQueryDirty(() => useDocumentStore.getState().dirty)
   }, [])
 
   return (

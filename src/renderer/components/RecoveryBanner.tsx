@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { RecoveryEntry } from '@shared/ipc'
 import { useDocumentStore } from '../store/document'
 import { t } from '../i18n/ja'
+import { platform } from '../platform'
 
 /**
  * 前回の異常終了から復元する。
@@ -16,7 +17,7 @@ export function RecoveryBanner(): React.JSX.Element | null {
 
   useEffect(() => {
     let alive = true
-    void window.wowd.listRecovery().then((found) => {
+    void platform.listRecovery().then((found) => {
       if (alive) setEntries(found)
     })
     return () => {
@@ -29,7 +30,7 @@ export function RecoveryBanner(): React.JSX.Element | null {
   const restore = async (entry: RecoveryEntry): Promise<void> => {
     setBusy(true)
     try {
-      const bytes = await window.wowd.readRecovery(entry.id)
+      const bytes = await platform.readRecovery(entry.id)
       if (!bytes) {
         useDocumentStore.getState().setError('復元用のファイルを読めませんでした。')
         return
@@ -44,7 +45,7 @@ export function RecoveryBanner(): React.JSX.Element | null {
   }
 
   const discard = async (): Promise<void> => {
-    await window.wowd.clearRecovery()
+    await platform.clearRecovery()
     setEntries([])
   }
 

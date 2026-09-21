@@ -12,3 +12,4 @@ test-results/
 playwright-report/
 tests/fixtures/docx/*.docx
 !tests/fixtures/docx/.gitkeep
+dist-web/

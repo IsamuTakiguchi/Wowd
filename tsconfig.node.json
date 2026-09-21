@@ -2,6 +2,9 @@
   "extends": "./tsconfig.base.json",
   "include": [
     "electron.vite.config.ts",
+    "vite.web.config.ts",
+    "playwright.web.config.ts",
+    "tests/web/**/*.ts",
     "vitest.config.ts",
     "playwright.config.ts",
     "scripts/**/*.ts",
