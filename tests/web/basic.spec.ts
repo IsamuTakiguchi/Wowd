@@ -92,11 +92,13 @@ test('紙の外を押しても打てる (Electron 版で直した挙動がブラ
   const box = await page.locator('[data-testid="wowd-page"]').boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  // 紙の外の押下は mousedown でカーソルを置き直すので、反映を待ってから打つ
+  await page.waitForTimeout(250)
   await page.keyboard.type('あ')
   await expect(page.locator('.wowd-content')).toContainText('あ')
 })
 
-test('ページの JavaScript エラーが出ない', async ({ page }) => {
+test('ページの JavaScript エラーが出ない', async ({ page, isMobile }) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   const [chooser] = await Promise.all([
@@ -105,7 +107,14 @@ test('ページの JavaScript エラーが出ない', async ({ page }) => {
   ])
   await chooser.setFiles('tests/fixtures/docx/05-kitchen-sink.docx')
   await expect(page.locator('.wowd-content')).toContainText('総', { timeout: 15_000 })
-  await page.locator('button[role="tab"]', { hasText: '校閲' }).click()
-  await page.locator('button[role="tab"]', { hasText: '表示' }).click()
+  if (isMobile) {
+    // スマホにはリボンが無い。代わりに上下のバーを一通り触る
+    await page.locator('[data-testid="mobile-comments"]').tap()
+    await page.locator('[data-testid="mobile-menu"]').tap()
+    await page.locator('[data-testid="mobile-view"]').tap()
+  } else {
+    await page.locator('button[role="tab"]', { hasText: '校閲' }).click()
+    await page.locator('button[role="tab"]', { hasText: '表示' }).click()
+  }
   expect(errors, errors.join('\n')).toEqual([])
 })

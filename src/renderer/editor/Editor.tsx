@@ -6,6 +6,7 @@ import { fromWowdDoc } from './serialize/fromWowdDoc'
 import { toWowdDoc } from './serialize/toWowdDoc'
 import { useDocumentStore } from '../store/document'
 import { useUiStore } from '../store/ui'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { fontsToCss } from '@core/css/runCss'
 import { buildStyleSheet } from '@core/css/styleSheet'
 import { halfPtToPt } from '@shared/units'
@@ -45,6 +46,24 @@ export function WowdEditor({
   const revisionDisplay = useUiStore((s) => s.revisionDisplay)
   const setPageInfo = useUiStore((s) => s.setPageInfo)
   const setOverflowingTables = useUiStore((s) => s.setOverflowingTables)
+  const mobile = useIsMobile()
+
+  /**
+   * スマホの印刷レイアウトでは、紙を画面の幅に合わせて縮める。
+   * A4 は 794px あり、412px の画面では右側が見えない (実測した)。
+   * 画面の幅は回転で変わるので、ResizeObserver で追う
+   */
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [viewportWidth, setViewportWidth] = useState(0)
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el || !mobile) return
+    const update = (): void => setViewportWidth(el.clientWidth)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [mobile])
 
   /** 文書差し替え中に onUpdate が走って dirty が立つのを防ぐ */
   const loading = useRef(false)
@@ -202,8 +221,8 @@ export function WowdEditor({
   const section = resources?.sections[0] ?? defaultSection('fallback')
   const geometry = useMemo(() => toPx(pageGeometry(section)), [section])
   const flowStyle = useMemo(
-    () => flowCss(resources, section, geometry, viewMode === 'print'),
-    [resources, section, geometry, viewMode]
+    () => flowCss(resources, section, geometry, viewMode === 'print', mobile),
+    [resources, section, geometry, viewMode, mobile]
   )
 
   // styles.xml 由来の見た目。文書を読み込んだときだけ作り直す
@@ -232,26 +251,39 @@ export function WowdEditor({
    * それでは「画面の見た目と PDF 出力が一致する」という前提が崩れる。
    * transform は見た目だけを拡大するので、実測値も改ページ位置も変わらない。
    */
-  const scale = snapScale(zoom / 100)
+  // スマホの印刷レイアウトは、利用者の倍率ではなく画面の幅に合わせる
+  const fitScale =
+    mobile && isPrintView && viewportWidth > 0
+      ? Math.min(1, (viewportWidth - 16) / geometry.pageInline)
+      : null
+  const scale = snapScale(fitScale ?? zoom / 100)
+  // スマホの下書き表示は紙の幅を捨てて、画面いっぱいに流す
+  const stageWidth = mobile && !isPrintView ? undefined : geometry.pageInline
 
   return (
-    <div className="wowd-viewport" data-view-mode={viewMode} data-revisions={revisionDisplay}>
+    <div
+      className="wowd-viewport"
+      ref={viewportRef}
+      data-view-mode={viewMode}
+      data-revisions={revisionDisplay}
+      data-mobile={mobile ? 'true' : undefined}
+    >
       {styleSheet && <style data-wowd-styles="">{styleSheet}</style>}
       {/* 変形後の実寸を外枠に持たせないとスクロール量が合わない */}
       <div
         className="wowd-scaler-box"
         style={{
-          width: geometry.pageInline * scale,
+          width: stageWidth != null ? stageWidth * scale : undefined,
           height: naturalHeight != null ? naturalHeight * scale : undefined
         }}
       >
         <div
           className="wowd-scaler"
-          style={{ transform: `scale(${scale})`, width: geometry.pageInline }}
+          style={{ transform: `scale(${scale})`, width: stageWidth }}
         >
           <div
             className={isPrintView ? 'wowd-stage' : 'wowd-stage wowd-stage-draft'}
-            style={{ width: geometry.pageInline, height: naturalHeight }}
+            style={{ width: stageWidth, height: naturalHeight }}
             data-testid="wowd-page"
             onMouseDown={handleStageMouseDown}
           >
@@ -283,7 +315,8 @@ function flowCss(
   resources: WowdResources | null,
   section: SectionProps,
   geometry: ReturnType<typeof toPx>,
-  isPrintView: boolean
+  isPrintView: boolean,
+  mobile = false
 ): React.CSSProperties {
   const rPr = resources?.styles.docDefaults.rPr ?? null
   const family = fontsToCss(rPr?.rFonts ?? null)
@@ -296,10 +329,17 @@ function flowCss(
         paddingLeft: geometry.marginStart,
         paddingRight: geometry.marginEnd
       }
-    : {
-        width: geometry.textInline + 96,
-        padding: 48
-      }
+    : mobile
+      ? {
+          // スマホの下書き表示。紙の幅を持たず、画面の幅で折り返す
+          width: '100%',
+          boxSizing: 'border-box',
+          padding: 16
+        }
+      : {
+          width: geometry.textInline + 96,
+          padding: 48
+        }
 
   if (family) base.fontFamily = family
   if (rPr?.sz != null) base.fontSize = `${halfPtToPt(rPr.sz)}pt`

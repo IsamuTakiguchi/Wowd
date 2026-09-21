@@ -1029,3 +1029,152 @@ body {
     font-size: 15px;
   }
 }
+
+/* ── スマホ用の画面 (幅 720px 以下。Electron 版では出ない) ── */
+.app.is-mobile .wowd-viewport {
+  padding: 8px 0 16px;
+}
+
+.mobile-topbar,
+.mobile-bottombar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--ribbon-bg);
+  user-select: none;
+}
+
+.mobile-topbar {
+  border-bottom: 1px solid var(--ribbon-border);
+  /* ノッチのある端末で、上のバーが切れないようにする */
+  padding-top: calc(6px + env(safe-area-inset-top));
+}
+
+.mobile-bottombar {
+  border-top: 1px solid var(--ribbon-border);
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+
+.mobile-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.mobile-title strong {
+  color: var(--ribbon-accent);
+}
+
+/* 指で押すので 44px 以上にする (iOS の指針) */
+.mobile-topbar button,
+.mobile-bottombar button,
+.mobile-bottombar select {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.mobile-topbar button:disabled,
+.mobile-bottombar button:disabled {
+  opacity: 0.45;
+}
+
+.mobile-topbar button.is-dirty {
+  border-color: var(--ribbon-accent);
+  color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.mobile-bottombar .grow {
+  flex: 1;
+}
+
+.mobile-bottombar .is-active {
+  background: var(--ribbon-hover);
+  border-color: var(--ribbon-accent);
+}
+
+/* その他のメニュー。上のバーの下に出す */
+.mobile-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
+.mobile-menu {
+  position: fixed;
+  top: calc(60px + env(safe-area-inset-top));
+  right: 8px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--ribbon-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+.mobile-menu button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 15px;
+}
+
+.mobile-menu button:active {
+  background: var(--ribbon-hover);
+}
+
+/*
+ * コメントと検索は横のパネルではなく、画面に重ねて出す。
+ * 横に置くと本文の幅が無くなる。
+ */
+.app.is-mobile .comments-pane {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(58px + env(safe-area-inset-bottom));
+  width: auto;
+  max-height: 55vh;
+  z-index: 40;
+  border-inline-start: 0;
+  border-top: 1px solid var(--ribbon-border);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.22);
+}
+
+.app.is-mobile .find-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(58px + env(safe-area-inset-top));
+  width: auto;
+  z-index: 40;
+  border-inline-start: 0;
+  border-bottom: 1px solid var(--ribbon-border);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+/*
+ * スマホの下書き表示では、紙 (白い部分) を画面の高さまで伸ばす。
+ * 短い文書だと紙が 400px で終わり、その下の灰色を押しても
+ * カーソルが置けない (紙の外の処理は紙の上でしか効かない)。
+ */
+.app.is-mobile .wowd-stage-draft {
+  min-height: calc(100dvh - 140px);
+}

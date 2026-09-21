@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Ribbon } from './components/Ribbon'
 import { StatusBar } from './components/StatusBar'
@@ -16,12 +16,25 @@ import { exportPdf, registerPrintSource } from './print/exportPdf'
 import { startAutosave, saveRecoveryNow } from './store/autosave'
 import { RecoveryBanner } from './components/RecoveryBanner'
 import { platform } from './platform'
+import { useIsMobile } from './hooks/useIsMobile'
+import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
 
 export function App(): React.JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
 
   const store = useDocumentStore()
   const toggleFind = useUiStore((s) => s.toggleFind)
+  const setViewMode = useUiStore((s) => s.setViewMode)
+  const mobile = useIsMobile()
+
+  // スマホでは最初だけ下書き表示にする。A4 の紙を縮めると字が読めないので、
+  // 読むには画面の幅で折り返す下書き表示が向く。切り替えは利用者に任せる
+  const appliedMobileDefault = useRef(false)
+  useEffect(() => {
+    if (!mobile || appliedMobileDefault.current) return
+    appliedMobileDefault.current = true
+    setViewMode('draft')
+  }, [mobile, setViewMode])
   const overflowingTables = useUiStore((s) => s.overflowingTables)
   const dialog = useUiStore((s) => s.dialog)
   const openDialog = useUiStore((s) => s.openDialog)
@@ -147,8 +160,8 @@ export function App(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="app">
-      <Ribbon editor={editor} />
+    <div className={mobile ? 'app is-mobile' : 'app'}>
+      {mobile ? <MobileTopBar editor={editor} /> : <Ribbon editor={editor} />}
 
       <RecoveryBanner />
 
@@ -197,7 +210,7 @@ export function App(): React.JSX.Element {
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
       <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
 
-      <StatusBar editor={editor} />
+      {mobile ? <MobileBottomBar editor={editor} /> : <StatusBar editor={editor} />}
     </div>
   )
 }
