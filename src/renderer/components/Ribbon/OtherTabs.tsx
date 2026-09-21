@@ -283,6 +283,10 @@ export function ViewTab(): React.JSX.Element {
   const setViewMode = useUiStore((s) => s.setViewMode)
   const showGrid = useUiStore((s) => s.showGrid)
   const toggleGrid = useUiStore((s) => s.toggleGrid)
+  const showRuler = useUiStore((s) => s.showRuler)
+  const toggleRuler = useUiStore((s) => s.toggleRuler)
+  const showTrimMarks = useUiStore((s) => s.showTrimMarks)
+  const toggleTrimMarks = useUiStore((s) => s.toggleTrimMarks)
 
   const document_ = useDocumentStore((s) => s.document)
   const section = document_?.resources.sections[0] ?? null
@@ -324,6 +328,29 @@ export function ViewTab(): React.JSX.Element {
             active={showGrid}
             disabled={!hasGrid}
             onClick={() => toggleGrid()}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
+      <RibbonGroup label="定規と印刷用の印">
+        <RibbonRow>
+          <RibbonButton
+            label="ルーラ"
+            title="余白と字下げの目盛りを表示する。三角をつかむと字下げを変えられる"
+            wide
+            active={showRuler}
+            disabled={viewMode !== 'print'}
+            onClick={() => toggleRuler()}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="裁ちトンボ"
+            title="断裁位置の印を付ける。用紙は四辺 13mm ずつ大きくなり、PDF にも同じ印が入る"
+            wide
+            active={showTrimMarks}
+            disabled={viewMode !== 'print'}
+            onClick={() => toggleTrimMarks()}
           />
         </RibbonRow>
       </RibbonGroup>

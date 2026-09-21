@@ -110,6 +110,8 @@ export type MenuCommand =
   | { kind: 'edit.find' }
   | { kind: 'edit.selectAll' }
   | { kind: 'view.zoom'; delta: number }
+  | { kind: 'view.toggleRuler' }
+  | { kind: 'view.toggleTrimMarks' }
   | { kind: 'review.toggleTracking' }
   | { kind: 'review.applyAll'; action: 'accept' | 'reject' }
   | { kind: 'review.goto'; direction: 1 | -1 }

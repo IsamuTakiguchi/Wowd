@@ -29,6 +29,13 @@ export interface PageLayout {
   /** 用紙 1 枚ぶんの送り (用紙高 + 隙間) */
   stride: number
   /**
+   * ページ間の隙間 (px)。
+   *
+   * ふだんは PAGE_GAP だが、裁ちトンボを出すときは紙が上下に広がるぶん
+   * 隙間も広げる。広げないと隣の紙とトンボが重なる。
+   */
+  gap: number
+  /**
    * 1 ページに収まらず紙からはみ出したブロックの数。
    *
    * 表はページ間で分割しないので、長い表でこれが起きる。
@@ -53,5 +60,6 @@ export const EMPTY_LAYOUT: PageLayout = {
     footerOffset: 0
   },
   stride: 0,
+  gap: PAGE_GAP,
   overflow: { tables: 0, others: 0 }
 }

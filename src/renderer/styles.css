@@ -273,6 +273,8 @@ body {
  */
 .wowd-scaler-box {
   margin: 0 auto;
+  /* 縦ルーラをこの箱の左外に置くための基準 */
+  position: relative;
 }
 
 .wowd-scaler {
@@ -1177,4 +1179,202 @@ body {
  */
 .app.is-mobile .wowd-stage-draft {
   min-height: calc(100dvh - 140px);
+}
+
+/* ---- ルーラ (目盛り) ---------------------------------------------------- */
+
+/*
+ * 紙と同じ座標系で描くが、倍率は transform ではなく座標に掛けている。
+ * transform で拡大すると線も数字も太り、目盛りとして読めなくなるため。
+ */
+.wowd-ruler {
+  position: relative;
+  background: #dcdfe5;
+  border: 1px solid #b9bec7;
+  font-size: 9px;
+  line-height: 1;
+  color: #5a6069;
+  user-select: none;
+  flex: none;
+}
+
+.wowd-ruler-h {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0 auto 6px;
+}
+
+.wowd-ruler-v {
+  position: absolute;
+  left: -28px;
+  z-index: 3;
+}
+
+/* 本文領域。余白との境をここで見せる */
+.wowd-ruler-text-area {
+  position: absolute;
+  background: var(--paper);
+}
+
+.wowd-ruler-h .wowd-ruler-text-area {
+  top: 0;
+  bottom: 0;
+}
+
+.wowd-ruler-v .wowd-ruler-text-area {
+  left: 0;
+  right: 0;
+}
+
+.wowd-ruler-tick {
+  position: absolute;
+  background: #7f858e;
+}
+
+.wowd-ruler-h .wowd-ruler-tick {
+  top: 50%;
+  width: 1px;
+  height: 3px;
+  transform: translate(-0.5px, -1.5px);
+}
+
+.wowd-ruler-h .wowd-ruler-tick.is-major {
+  height: 6px;
+  transform: translate(-0.5px, -3px);
+}
+
+.wowd-ruler-v .wowd-ruler-tick {
+  left: 50%;
+  height: 1px;
+  width: 3px;
+  transform: translate(-1.5px, -0.5px);
+}
+
+.wowd-ruler-v .wowd-ruler-tick.is-major {
+  width: 6px;
+  transform: translate(-3px, -0.5px);
+}
+
+.wowd-ruler-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0 2px;
+  background: inherit;
+  white-space: nowrap;
+}
+
+/* 数字は目盛りの線に重ねず、背景を紙の色で抜いて読めるようにする */
+.wowd-ruler-h .wowd-ruler-tick.is-major .wowd-ruler-label {
+  top: -7px;
+}
+
+.wowd-ruler-v .wowd-ruler-tick.is-major .wowd-ruler-label {
+  left: -8px;
+}
+
+/* ---- 字下げをつかむ三角 ---- */
+
+/*
+ * つまみは 3 つとも同じ位置に重なりうる (字下げが 0 のとき)。
+ * 当たり判定を高さで分けないと、上の三角をつかもうとしても
+ * 下の三角が取ってしまう。Word も上下で段を分けている。
+ *   上段 … 1 行目の字下げ
+ *   中段 … 2 行目以降の字下げ / 右の字下げ
+ *   下段 … 段落全体
+ */
+.wowd-ruler-handle {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: ew-resize;
+  z-index: 1;
+}
+
+.wowd-ruler-handle.is-firstLine {
+  top: 0;
+  height: 10px;
+}
+
+.wowd-ruler-handle.is-hanging,
+.wowd-ruler-handle.is-right {
+  top: 10px;
+  height: 7px;
+}
+
+.wowd-ruler-handle:focus-visible {
+  outline: 2px solid var(--ribbon-accent);
+  outline-offset: -2px;
+}
+
+.wowd-ruler-handle-mark {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+}
+
+/* 1 行目の字下げ。下を向いた三角を上段に置く */
+.wowd-ruler-handle.is-firstLine .wowd-ruler-handle-mark {
+  top: 1px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #4a5563;
+}
+
+/* 2 行目以降の字下げと右の字下げ。上を向いた三角を中段に置く */
+.wowd-ruler-handle.is-hanging .wowd-ruler-handle-mark,
+.wowd-ruler-handle.is-right .wowd-ruler-handle-mark {
+  bottom: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid #4a5563;
+}
+
+/* 段落全体を動かす四角。三角の下に置く */
+.wowd-ruler-handle.is-left .wowd-ruler-handle-mark {
+  bottom: 0;
+  width: 10px;
+  height: 5px;
+  background: #4a5563;
+}
+
+.wowd-ruler-handle:hover .wowd-ruler-handle-mark {
+  filter: brightness(1.5);
+}
+
+.wowd-ruler-handle.is-left {
+  bottom: 0;
+  height: 5px;
+  z-index: 2;
+}
+
+/* スマホではルーラを出さない。画面の幅が本文に要る */
+.app.is-mobile .wowd-ruler {
+  display: none;
+}
+
+/* ---- 裁ちトンボ -------------------------------------------------------- */
+
+/*
+ * 紙そのものが仕上がりサイズより大きくなる。
+ * 舞台にトンボぶんの padding を付けてあるので、本文は元の位置のまま。
+ */
+.wowd-page-backdrop.is-trimmed {
+  background: var(--paper);
+}
+
+.wowd-trim-marks {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.wowd-trim-marks svg {
+  display: block;
 }

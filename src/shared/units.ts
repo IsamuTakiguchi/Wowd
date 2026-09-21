@@ -25,6 +25,8 @@ export const PX_PER_PT = 96 / 72
 export const twipToPt = (v: Twip): Pt => v / TWIP_PER_PT
 export const ptToTwip = (v: Pt): Twip => Math.round(v * TWIP_PER_PT)
 export const twipToPx = (v: Twip): number => (v / TWIP_PER_PT) * PX_PER_PT
+/** px から twip へ。ルーラをつかんで動かすときのように、画面の座標を寸法に戻す場面で使う */
+export const pxToTwip = (v: number): Twip => Math.round((v / PX_PER_PT) * TWIP_PER_PT)
 export const twipToMm = (v: Twip): number => (v / TWIP_PER_INCH) * 25.4
 export const mmToTwip = (v: number): Twip => Math.round((v / 25.4) * TWIP_PER_INCH)
 

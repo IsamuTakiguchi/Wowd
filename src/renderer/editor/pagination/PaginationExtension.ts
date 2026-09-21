@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core'
 import type { SectionProps } from '@core/model/types'
 import { paginationPlugin } from './PaginationPlugin'
-import type { PageLayout } from './types'
+import { PAGE_GAP, type PageLayout } from './types'
 
 /**
  * ページ分割プラグインを TipTap に登録する。
@@ -14,12 +14,15 @@ import type { PageLayout } from './types'
 export interface PaginationStorage {
   section: SectionProps | null
   enabled: boolean
+  /** ページ間の隙間 (px)。裁ちトンボを出すときは広げる */
+  pageGap: number
   onLayout: (layout: PageLayout) => void
 }
 
 export interface PaginationConfig {
   section: SectionProps | null
   enabled: boolean
+  pageGap: number
   onLayout: (layout: PageLayout) => void
 }
 
@@ -33,6 +36,7 @@ export const PaginationExtension = Extension.create<
     return {
       section: null,
       enabled: false,
+      pageGap: PAGE_GAP,
       onLayout: () => undefined
     }
   },
@@ -46,6 +50,7 @@ export const PaginationExtension = Extension.create<
           if (!storage) return false
           storage.section = config.section
           storage.enabled = config.enabled
+          storage.pageGap = config.pageGap
           storage.onLayout = config.onLayout
           return true
         }
@@ -58,6 +63,7 @@ export const PaginationExtension = Extension.create<
       paginationPlugin({
         getSection: () => storage.section,
         isEnabled: () => storage.enabled,
+        getPageGap: () => storage.pageGap,
         onLayout: (layout) => storage.onLayout(layout)
       })
     ]

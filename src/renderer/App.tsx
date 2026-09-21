@@ -41,6 +41,8 @@ export function App(): React.JSX.Element {
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
   const setTracking = useUiStore((s) => s.setTracking)
   const toggleComments = useUiStore((s) => s.toggleComments)
+  const toggleRuler = useUiStore((s) => s.toggleRuler)
+  const toggleTrimMarks = useUiStore((s) => s.toggleTrimMarks)
 
   const onReady = useCallback((next: Editor | null) => setEditor(next), [])
 
@@ -135,6 +137,12 @@ export function App(): React.JSX.Element {
         case 'view.zoom':
           nudgeZoom(cmd.delta)
           break
+        case 'view.toggleRuler':
+          toggleRuler()
+          break
+        case 'view.toggleTrimMarks':
+          toggleTrimMarks()
+          break
         case 'help.about':
           void platform
             .getAppInfo()
@@ -145,7 +153,7 @@ export function App(): React.JSX.Element {
       }
     }
     return platform.onMenuCommand(handler)
-  }, [editor, toggleFind, nudgeZoom, setTracking, toggleComments])
+  }, [editor, toggleFind, nudgeZoom, setTracking, toggleComments, toggleRuler, toggleTrimMarks])
 
   // ファイル関連付けや「アプリで開く」からの起動
   useEffect(() => {

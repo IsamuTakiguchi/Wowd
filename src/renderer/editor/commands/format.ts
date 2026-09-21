@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react'
-import type { RunProps, ParagraphAttrs, Justification } from '@core/model/types'
+import type { RunProps, ParagraphAttrs, Justification, ParagraphIndent } from '@core/model/types'
 import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
 import { recordRunFormatChange, recordParaFormatChange } from '../track/formatRevision'
 
@@ -62,6 +62,49 @@ export function setLineSpacing(editor: Editor, multiple: number): void {
   patchParagraph(editor, {
     spacing: { ...(attrs.spacing ?? {}), line: Math.round(multiple * 240), lineRule: 'auto' }
   })
+}
+
+/** いま選んでいる段落の字下げ。無指定なら null */
+export function currentIndent(editor: Editor | null): ParagraphIndent | null {
+  return currentParagraphAttrs(editor).ind ?? null
+}
+
+/**
+ * 字下げを差し替える。ルーラの三角をつかんで動かしたときに使う。
+ *
+ * 文字単位の指定 (leftChars など) がある文書では、対応する文字単位の値を消してから
+ * twip を入れる。両方あると Word はどちらか片方を無視するので、
+ * 画面で見えている値と Word で開いた値が食い違う。
+ */
+export function setIndent(editor: Editor, patch: Partial<ParagraphIndent>): void {
+  const current = currentIndent(editor) ?? {}
+  const next: ParagraphIndent = { ...current, ...patch }
+  const pairs: [keyof ParagraphIndent, keyof ParagraphIndent][] = [
+    ['left', 'leftChars'],
+    ['right', 'rightChars'],
+    ['firstLine', 'firstLineChars'],
+    ['hanging', 'hangingChars']
+  ]
+  for (const [twipKey, charsKey] of pairs) {
+    if (patch[twipKey] !== undefined) delete next[charsKey]
+  }
+
+  /*
+   * 1 行目の字下げとぶら下げは排他。**0 を入れるのではなく消す。**
+   * 0 でも「指定されている」ことに変わりはなく、CSS への写像
+   * (indentToCss) はぶら下げを先に見るので、hanging: 0 が残っていると
+   * firstLine が無視されて字下げが効かない (実際にそうなった)。
+   */
+  if (patch.firstLine != null || patch.firstLineChars != null) {
+    delete next.hanging
+    delete next.hangingChars
+  }
+  if (patch.hanging != null || patch.hangingChars != null) {
+    delete next.firstLine
+    delete next.firstLineChars
+  }
+
+  patchParagraph(editor, { ind: next })
 }
 
 /** インデントを 1 段ぶん増減する。1 段 = 2 文字 (日本語 Word の既定に合わせる) */

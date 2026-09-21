@@ -10,7 +10,7 @@ import {
   type BlockInput
 } from '@core/layout/pageBreaks'
 import { measureBlocks, SPACER_ATTRIBUTE, type BlockMetrics } from './measure'
-import { PAGE_GAP, type PageLayout, type PageInfo, EMPTY_LAYOUT } from './types'
+import { type PageLayout, type PageInfo, EMPTY_LAYOUT } from './types'
 
 export const paginationKey = new PluginKey<PaginationState>('wowd-pagination')
 
@@ -26,6 +26,8 @@ export interface PaginationOptions {
   onLayout: (layout: PageLayout) => void
   /** ページ表示が無効なら分割しない (下書き表示) */
   isEnabled: () => boolean
+  /** ページ間の隙間 (px)。裁ちトンボを出すときは広がる */
+  getPageGap: () => number
 }
 
 /** 再計算を束ねる待ち時間 (ms)。打鍵のたびに測ると重すぎる */
@@ -145,7 +147,7 @@ class PaginationRunner {
         brk.remaining,
         geometry.marginAfter,
         geometry.marginBefore,
-        PAGE_GAP
+        this.options.getPageGap()
       )
       decorations.push(
         Decoration.widget(block.pos, () => createSpacer(height), {
@@ -248,13 +250,14 @@ class PaginationRunner {
     pageCount: number,
     overflow: PageLayout['overflow'] = { tables: 0, others: 0 }
   ): PageLayout {
-    const stride = geometry.pageBlock + PAGE_GAP
+    const gap = this.options.getPageGap()
+    const stride = geometry.pageBlock + gap
     const start = section.pgNumType?.start ?? 1
     const pages: PageInfo[] = []
     for (let i = 0; i < Math.max(1, pageCount); i++) {
       pages.push({ index: i, displayNumber: start + i, top: i * stride, section })
     }
-    return { pages, breaks: [], geometry, stride, overflow }
+    return { pages, breaks: [], geometry, stride, gap, overflow }
   }
 }
 

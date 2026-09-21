@@ -18,6 +18,9 @@ import { mediaRegistry } from './media'
 import { PaginationExtension } from './pagination/PaginationExtension'
 import { PageChrome } from './pagination/PageChrome'
 import { PAGE_GAP, EMPTY_LAYOUT, type PageLayout } from './pagination/types'
+import { trimMarkLayout } from '@core/layout/trimMarks'
+import { twipToCssPx } from '@core/layout/pageGeometry'
+import { HorizontalRuler, VerticalRuler } from '../components/Ruler'
 
 /**
  * 文書本体のエディタ。
@@ -41,6 +44,8 @@ export function WowdEditor({
   const zoom = useUiStore((s) => s.zoom)
   const viewMode = useUiStore((s) => s.viewMode)
   const showGrid = useUiStore((s) => s.showGrid)
+  const showRuler = useUiStore((s) => s.showRuler)
+  const showTrimMarks = useUiStore((s) => s.showTrimMarks)
   const tracking = useUiStore((s) => s.tracking)
   const author = useUiStore((s) => s.author)
   const revisionDisplay = useUiStore((s) => s.revisionDisplay)
@@ -139,6 +144,35 @@ export function WowdEditor({
   // 画面を閉じるときに blob URL を解放する
   useEffect(() => () => mediaRegistry.clear(), [])
 
+  const section = resources?.sections[0] ?? defaultSection('fallback')
+  const geometry = useMemo(() => toPx(pageGeometry(section)), [section])
+
+  const isPrintView = viewMode === 'print'
+
+  /**
+   * 裁ちトンボのぶん、紙が四辺に広がる量 (px)。
+   *
+   * 印刷レイアウトのときだけ効く。下書き表示には紙が無いので出しようがない。
+   * この値が 0 でなければ、紙も舞台もこのぶん大きくなる。
+   */
+  const trimOffset = useMemo(
+    () =>
+      showTrimMarks && isPrintView
+        ? twipToCssPx(
+            trimMarkLayout({ finishInline: section.pgSz.w, finishBlock: section.pgSz.h }).offset
+          )
+        : 0,
+    [showTrimMarks, isPrintView, section]
+  )
+
+  /**
+   * ページ間の隙間。
+   *
+   * トンボを出すと紙が上下に広がるので、隙間も広げないと隣の紙と重なる。
+   * 広げたぶんはスペーサーの高さにも効くので、本文の落ちる位置は変わらない。
+   */
+  const pageGap = PAGE_GAP + trimOffset * 2
+
   /**
    * ページ分割の前提が変わったらプラグインに知らせる。
    *
@@ -152,12 +186,13 @@ export function WowdEditor({
     ).setPaginationConfig({
       section: resources?.sections[0] ?? null,
       enabled: viewMode === 'print',
+      pageGap,
       onLayout: handleLayout
     })
     // 設定を変えただけではプラグインは動かないので、
     // 何も変えないトランザクションで再計算のきっかけを作る
     editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false))
-  }, [editor, resources, viewMode, handleLayout])
+  }, [editor, resources, viewMode, pageGap, handleLayout])
 
   /**
    * 変更履歴の設定をプラグインへ渡す。
@@ -218,8 +253,6 @@ export function WowdEditor({
     }
   }, [editor, loadToken])
 
-  const section = resources?.sections[0] ?? defaultSection('fallback')
-  const geometry = useMemo(() => toPx(pageGeometry(section)), [section])
   const flowStyle = useMemo(
     () => flowCss(resources, section, geometry, viewMode === 'print', mobile),
     [resources, section, geometry, viewMode, mobile]
@@ -236,11 +269,11 @@ export function WowdEditor({
     [showGrid, resources, section]
   )
 
-  const isPrintView = viewMode === 'print'
-  // ページ分割の結果に合わせてスクロール領域の高さを確保する
+  // ページ分割の結果に合わせてスクロール領域の高さを確保する。
+  // 最後の紙の下に隙間は要らないが、トンボのぶんは要る
   const naturalHeight =
     isPrintView && layout.pages.length > 0
-      ? layout.pages.length * layout.stride - PAGE_GAP
+      ? layout.pages.length * layout.stride - layout.gap + trimOffset * 2
       : undefined
 
   /**
@@ -257,8 +290,10 @@ export function WowdEditor({
       ? Math.min(1, (viewportWidth - 16) / geometry.pageInline)
       : null
   const scale = snapScale(fitScale ?? zoom / 100)
-  // スマホの下書き表示は紙の幅を捨てて、画面いっぱいに流す
-  const stageWidth = mobile && !isPrintView ? undefined : geometry.pageInline
+  // スマホの下書き表示は紙の幅を捨てて、画面いっぱいに流す。
+  // トンボを出すときは紙が左右に広がるので、舞台もそのぶん広げる
+  const stageWidth =
+    mobile && !isPrintView ? undefined : geometry.pageInline + trimOffset * 2
 
   return (
     <div
@@ -269,6 +304,18 @@ export function WowdEditor({
       data-mobile={mobile ? 'true' : undefined}
     >
       {styleSheet && <style data-wowd-styles="">{styleSheet}</style>}
+
+      {/* ルーラは紙の外。倍率は座標に掛けてあるので、拡大しても線は太らない */}
+      {isPrintView && showRuler && !mobile && stageWidth != null && (
+        <HorizontalRuler
+          editor={editor}
+          geometry={geometry}
+          scale={scale}
+          offsetPx={trimOffset}
+          stageWidth={stageWidth}
+        />
+      )}
+
       {/* 変形後の実寸を外枠に持たせないとスクロール量が合わない */}
       <div
         className="wowd-scaler-box"
@@ -277,17 +324,31 @@ export function WowdEditor({
           height: naturalHeight != null ? naturalHeight * scale : undefined
         }}
       >
+        {isPrintView &&
+          showRuler &&
+          !mobile &&
+          layout.pages.map((page) => (
+            <VerticalRuler
+              key={page.index}
+              geometry={geometry}
+              scale={scale}
+              offsetPx={trimOffset}
+              top={page.top * scale}
+            />
+          ))}
         <div
           className="wowd-scaler"
           style={{ transform: `scale(${scale})`, width: stageWidth }}
         >
           <div
             className={isPrintView ? 'wowd-stage' : 'wowd-stage wowd-stage-draft'}
-            style={{ width: stageWidth, height: naturalHeight }}
+            style={{ width: stageWidth, height: naturalHeight, padding: trimOffset || undefined }}
             data-testid="wowd-page"
             onMouseDown={handleStageMouseDown}
           >
-            {isPrintView && <PageChrome layout={layout} resources={resources} />}
+            {isPrintView && (
+              <PageChrome layout={layout} resources={resources} trimOffset={trimOffset} />
+            )}
             <div
               className="wowd-flow"
               style={{ ...flowStyle, ...(gridCss ?? {}) }}

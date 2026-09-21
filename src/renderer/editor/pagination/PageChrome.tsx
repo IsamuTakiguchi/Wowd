@@ -4,7 +4,44 @@ import { pickHeaderFooterRef } from '@core/layout/pageGeometry'
 import { resolveField } from '@core/fields'
 import { paragraphAttrsToStyle } from '@core/css/paragraphCss'
 import { runPropsToStyle, DEFAULT_RUN_PROPS } from '@core/css/runCss'
+import { trimMarkLayout, trimMarkSvg } from '@core/layout/trimMarks'
+import { twipToCssPx } from '@core/layout/pageGeometry'
+import { pxToTwip } from '@shared/units'
 import type { PageLayout } from './types'
+
+/**
+ * 紙に重ねる裁ちトンボ。
+ *
+ * 図は印刷と同じ src/core/layout/trimMarks.ts で作る。
+ * 別々に描くと画面と PDF で線がずれ、どちらが正しいか分からなくなる。
+ */
+function TrimMarks({
+  geometry,
+  offset
+}: {
+  geometry: PageLayout['geometry']
+  offset: number
+}): React.JSX.Element {
+  const svg = useMemo(() => {
+    const layout = trimMarkLayout({
+      finishInline: pxToTwip(geometry.pageInline),
+      finishBlock: pxToTwip(geometry.pageBlock)
+    })
+    return trimMarkSvg(layout, {
+      width: `${twipToCssPx(layout.sheetInline)}px`,
+      height: `${twipToCssPx(layout.sheetBlock)}px`
+    })
+  }, [geometry.pageInline, geometry.pageBlock])
+
+  return (
+    <div
+      className="wowd-trim-marks"
+      data-testid="wowd-trim-marks"
+      style={{ left: 0, top: 0, width: geometry.pageInline + offset * 2 }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
 
 /**
  * 用紙の下地と、ヘッダー / フッターを描く層。
@@ -14,15 +51,25 @@ import type { PageLayout } from './types'
  */
 export function PageChrome({
   layout,
-  resources
+  resources,
+  trimOffset = 0
 }: {
   layout: PageLayout
   resources: WowdResources | null
+  /**
+   * 裁ちトンボのぶん、紙が四辺に広がる量 (px)。0 ならトンボを出さない。
+   *
+   * 舞台にはこのぶんの padding が付いている。絶対配置は padding の影響を受けないので、
+   * 仕上がりサイズの紙は (trimOffset, trimOffset + page.top) に来る。
+   * トンボ込みの紙はそこから四辺に trimOffset ぶん広い。
+   */
+  trimOffset?: number
 }): React.JSX.Element | null {
   if (layout.pages.length === 0) return null
 
   const pageCount = layout.pages.length
   const { geometry } = layout
+  const trimmed = trimOffset > 0
 
   return (
     <div className="wowd-chrome" aria-hidden="true">
@@ -48,20 +95,24 @@ export function PageChrome({
         return (
           <div
             key={page.index}
-            className="wowd-page-backdrop"
+            className={trimmed ? 'wowd-page-backdrop is-trimmed' : 'wowd-page-backdrop'}
             data-page={page.index + 1}
             style={{
+              // トンボを出すときは紙そのものが大きくなる。
+              // 仕上がりの位置は動かさず、その外側へ広げる
               top: page.top,
-              width: geometry.pageInline,
-              height: geometry.pageBlock
+              width: geometry.pageInline + trimOffset * 2,
+              height: geometry.pageBlock + trimOffset * 2,
+              padding: trimmed ? trimOffset : undefined
             }}
           >
+            {trimmed && <TrimMarks geometry={geometry} offset={trimOffset} />}
             <PartLayer
               className="wowd-header"
               doc={headerId ? (resources?.headers.get(headerId) ?? null) : null}
               style={{
-                top: geometry.headerOffset,
-                left: geometry.marginStart,
+                top: geometry.headerOffset + trimOffset,
+                left: geometry.marginStart + trimOffset,
                 width: geometry.textInline
               }}
               pageNumber={page.displayNumber}
@@ -72,8 +123,8 @@ export function PageChrome({
               className="wowd-footer"
               doc={footerId ? (resources?.footers.get(footerId) ?? null) : null}
               style={{
-                bottom: geometry.footerOffset,
-                left: geometry.marginStart,
+                bottom: geometry.footerOffset + trimOffset,
+                left: geometry.marginStart + trimOffset,
                 width: geometry.textInline
               }}
               pageNumber={page.displayNumber}

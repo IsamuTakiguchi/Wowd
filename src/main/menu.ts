@@ -107,7 +107,12 @@ export async function buildMenu(): Promise<void> {
         { label: '縮小', accelerator: 'CmdOrCtrl+-', click: () => send({ kind: 'view.zoom', delta: -10 }) },
         { label: '100%', accelerator: 'CmdOrCtrl+0', click: () => send({ kind: 'view.zoom', delta: 0 }) },
         { type: 'separator' },
-        { role: 'reload', label: '再読み込み' },
+        { type: 'separator' },
+      // ショートカットは付けない。Ctrl+R は下の「再読み込み」が使っている
+      { label: 'ルーラ', click: () => send({ kind: 'view.toggleRuler' }) },
+      { label: '裁ちトンボ', click: () => send({ kind: 'view.toggleTrimMarks' }) },
+      { type: 'separator' },
+      { role: 'reload', label: '再読み込み' },
         { role: 'toggleDevTools', label: '開発者ツール' }
       ]
     },
