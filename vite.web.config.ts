@@ -37,6 +37,33 @@ export default defineConfig({
       // manifest と sw.js は Vite が拾わない静的ファイル。
       // SW は入口と同じ階層に無いと画面全体を担当できないので、ここで root に出す
       name: 'wowd-web-static',
+      /**
+       * manifest への link は **ここで最後に差し込む**。
+       *
+       * HTML に直接書くと Vite が資産として扱い、assets/ にハッシュ付きで移す。
+       * manifest の start_url と icons は **manifest 自身の場所**を基準に解決されるので、
+       * assets/ に移ると起動先が /assets/ になる。
+       * 画面から開く分には気づかないが、ホーム画面に追加したアイコンから開くと
+       * その存在しない場所へ飛び、404 になる (実際にそうなった)。
+       *
+       * order: 'post' は Vite が資産の書き換えを終えたあとに走る。
+       * だから href はここに書いたまま残る。
+       */
+      transformIndexHtml: {
+        order: 'post' as const,
+        handler(html: string) {
+          return {
+            html,
+            tags: [
+              {
+                tag: 'link',
+                attrs: { rel: 'manifest', href: './manifest.webmanifest' },
+                injectTo: 'head' as const
+              }
+            ]
+          }
+        }
+      },
       generateBundle() {
         for (const name of ['manifest.webmanifest', 'sw.js']) {
           this.emitFile({
