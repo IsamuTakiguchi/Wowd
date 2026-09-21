@@ -32,6 +32,15 @@ export interface UiState {
   viewMode: ViewMode
   /** 原稿用紙のマス目を表示する */
   showGrid: boolean
+  /** ルーラ (目盛り) を表示する */
+  showRuler: boolean
+  /**
+   * 裁ちトンボを表示する。
+   *
+   * 画面と PDF の両方に効く。Wowd は「画面の見た目と PDF が一致する」ことを
+   * 構造で保証しているので、ここだけ別扱いにしない。
+   */
+  showTrimMarks: boolean
   /** 現在カーソルがあるページ (1 始まり) */
   currentPage: number
   /** 文書全体のページ数 */
@@ -60,6 +69,8 @@ export interface UiState {
   toggleFind: (open?: boolean) => void
   setViewMode: (mode: ViewMode) => void
   toggleGrid: (on?: boolean) => void
+  toggleRuler: (on?: boolean) => void
+  toggleTrimMarks: (on?: boolean) => void
   setPageInfo: (current: number, count: number) => void
   setOverflowingTables: (n: number) => void
   openDialog: (kind: DialogKind) => void
@@ -75,6 +86,8 @@ export const MAX_ZOOM = 300
 /** 既定の著者名。Word の「ユーザー名」に当たる */
 const DEFAULT_AUTHOR = '利用者'
 const AUTHOR_KEY = 'wowd.author'
+const RULER_KEY = 'wowd.showRuler'
+const TRIM_KEY = 'wowd.showTrimMarks'
 
 function loadAuthor(): string {
   // 保存できない環境 (プライベートウィンドウなど) でも動くようにする
@@ -93,12 +106,40 @@ function saveAuthor(author: string): void {
   }
 }
 
+/**
+ * 作業環境の設定を覚えておく。
+ *
+ * ルーラの出し入れは「文書の中身」ではなく「その人の作業環境」なので、
+ * 起動のたびに戻ると煩わしい。倍率や表示モードを覚えないのは、
+ * そちらは文書ごとに変えるものだから。
+ */
+function loadFlag(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw == null ? fallback : raw === '1'
+  } catch {
+    return fallback
+  }
+}
+
+function saveFlag(key: string, on: boolean): void {
+  try {
+    localStorage.setItem(key, on ? '1' : '0')
+  } catch {
+    // 保存できなくても編集は続けられる
+  }
+}
+
 export const useUiStore = create<UiState>((set) => ({
   tab: 'home',
   zoom: 100,
   findOpen: false,
   viewMode: 'print',
   showGrid: false,
+  // ルーラは既定で出す。Word もそうで、字下げの位置が見えないと直しにくい
+  showRuler: loadFlag(RULER_KEY, true),
+  // トンボは入稿のときだけ要るので既定では出さない
+  showTrimMarks: loadFlag(TRIM_KEY, false),
   currentPage: 1,
   pageCount: 1,
   overflowingTables: 0,
@@ -115,6 +156,18 @@ export const useUiStore = create<UiState>((set) => ({
   toggleFind: (open) => set((s) => ({ findOpen: open ?? !s.findOpen })),
   setViewMode: (viewMode) => set({ viewMode }),
   toggleGrid: (on) => set((s) => ({ showGrid: on ?? !s.showGrid })),
+  toggleRuler: (on) =>
+    set((s) => {
+      const showRuler = on ?? !s.showRuler
+      saveFlag(RULER_KEY, showRuler)
+      return { showRuler }
+    }),
+  toggleTrimMarks: (on) =>
+    set((s) => {
+      const showTrimMarks = on ?? !s.showTrimMarks
+      saveFlag(TRIM_KEY, showTrimMarks)
+      return { showTrimMarks }
+    }),
   openDialog: (dialog) => set({ dialog }),
   toggleComments: (open) => set((s) => ({ commentsOpen: open ?? !s.commentsOpen })),
   setTracking: (on) => set((s) => ({ tracking: on ?? !s.tracking })),

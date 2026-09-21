@@ -4,7 +4,9 @@ import { buildPrintHtml, type PrintPage } from '@core/css/printHtml'
 import { toWowdDoc } from '../editor/serialize/toWowdDoc'
 import { paginationKey } from '../editor/pagination/PaginationPlugin'
 import { twipToMm } from '@shared/units'
+import { trimMarkLayout, trimMarkPaperMm } from '@core/layout/trimMarks'
 import { platform } from '../platform'
+import { useUiStore } from '../store/ui'
 
 /**
  * 画面のページ分割結果をそのまま印刷用 HTML に写して PDF にする。
@@ -19,6 +21,11 @@ export interface PrintPayload {
   defaultName: string
 }
 
+export interface PrintOptions {
+  /** 裁ちトンボを付ける。用紙は仕上がりサイズより一回り大きくなる */
+  trimMarks?: boolean
+}
+
 /**
  * 印刷用の一式を組み立てる。
  * いま開いているエディタと文書は登録済みのものを使う。
@@ -26,9 +33,11 @@ export interface PrintPayload {
 export function buildPrintPayload(
   editor: Editor,
   document_: WowdDocument,
-  fileName: string
+  fileName: string,
+  options: PrintOptions = {}
 ): PrintPayload {
   const pages = slicePages(editor, document_)
+  const trimMarks = options.trimMarks === true
   const html = buildPrintHtml({
     pages,
     styles: document_.resources.styles,
@@ -36,18 +45,30 @@ export function buildPrintPayload(
     footers: document_.resources.footers,
     mediaDataUrls: mediaDataUrls(document_),
     numbering: document_.resources.numbering,
-    title: fileName
+    title: fileName,
+    trimMarks
   })
 
   return {
     html,
-    papers: pages.map((page) => ({
-      widthMm: twipToMm(page.section.pgSz.w),
-      heightMm: twipToMm(page.section.pgSz.h)
-    })),
+    // 用紙サイズは printHtml の @page と必ず一致させる。
+    // ずれると main 側の pageSize が優先されて、余りページが出たり切れたりする
+    papers: pages.map((page) => {
+      if (!trimMarks) {
+        return { widthMm: twipToMm(page.section.pgSz.w), heightMm: twipToMm(page.section.pgSz.h) }
+      }
+      return trimMarkPaperMm(
+        trimMarkLayout({ finishInline: page.section.pgSz.w, finishBlock: page.section.pgSz.h })
+      )
+    }),
     pageCount: pages.length,
     defaultName: fileName.replace(/\.docx$/i, '') + '.pdf'
   }
+}
+
+/** いまの表示設定。画面と PDF を一致させるため、印刷も同じ設定を見る */
+function currentPrintOptions(): PrintOptions {
+  return { trimMarks: useUiStore.getState().showTrimMarks }
 }
 
 /** いま開いているエディタと文書。E2E から印刷を叩けるようにするために保持する */
@@ -67,7 +88,7 @@ export function registerPrintSource(
 
 export function getPrintPayload(): PrintPayload | null {
   if (!currentEditor || !currentDocument) return null
-  return buildPrintPayload(currentEditor, currentDocument, currentName)
+  return buildPrintPayload(currentEditor, currentDocument, currentName, currentPrintOptions())
 }
 
 export async function exportPdf(
@@ -75,7 +96,7 @@ export async function exportPdf(
   document_: WowdDocument,
   fileName: string
 ): Promise<{ path: string | null; pageCount: number }> {
-  const payload = buildPrintPayload(editor, document_, fileName)
+  const payload = buildPrintPayload(editor, document_, fileName, currentPrintOptions())
   return platform.printToPdf({ ...payload, targetPath: null })
 }
 

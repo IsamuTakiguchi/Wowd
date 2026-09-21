@@ -9,6 +9,7 @@ import { defaultSection } from '@core/docx/read/section'
 import { emptyStyleTable } from '@core/docx/read/styles'
 import { EMPTY_PARAGRAPH_ATTRS } from '@core/docx/read/paragraph'
 import type { BlockNode, WowdDoc } from '@core/model/types'
+import { twipToMm } from '@shared/units'
 
 function para(text: string, attrs: Partial<typeof EMPTY_PARAGRAPH_ATTRS> = {}): BlockNode {
   return {
@@ -203,5 +204,73 @@ describe('buildPrintHtml', () => {
     for (const expected of ['総合テスト文書', '見出し 1', '和文', '番号項目', '末尾の段落。']) {
       expect(html, `${expected} が欠けている`).toContain(expected)
     }
+  })
+})
+
+describe('buildPrintHtml の裁ちトンボ', () => {
+  const base = {
+    styles: emptyStyleTable(),
+    headers: new Map<string, WowdDoc>(),
+    footers: new Map<string, WowdDoc>(),
+    title: '入稿'
+  }
+
+  /** @page の size から mm の数値を取り出す */
+  function paperMm(html: string): { w: number; h: number } {
+    const m = html.match(/@page [^{]+\{ size: ([\d.]+)mm ([\d.]+)mm/)
+    if (!m) throw new Error('@page の size が見つからない')
+    return { w: Number(m[1]), h: Number(m[2]) }
+  }
+
+  // A4 は 11906 x 16838 twip。mm に直すと 210.01 x 297 で、ちょうど 210mm ではない。
+  // 期待値は実寸から出す
+  const A4_W = twipToMm(defaultSection('sect1').pgSz.w)
+  const A4_H = twipToMm(defaultSection('sect1').pgSz.h)
+
+  it('付けないときは用紙が仕上がりサイズのまま', () => {
+    const html = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))] })
+    const paper = paperMm(html)
+    expect(paper.w).toBeCloseTo(A4_W, 1)
+    expect(paper.h).toBeCloseTo(A4_H, 1)
+    expect(html).not.toContain('wowd-print-marks')
+    expect(html).not.toContain('wowd-print-trim-area')
+  })
+
+  it('付けると用紙が四辺 13mm ずつ大きくなる', () => {
+    const html = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))], trimMarks: true })
+    const paper = paperMm(html)
+    expect(paper.w).toBeCloseTo(A4_W + 26, 1)
+    expect(paper.h).toBeCloseTo(A4_H + 26, 1)
+    // div の寸法も @page と一致していること。ずれると 1 枚ごとに余りページが出る
+    expect(html).toContain(`width: ${paper.w}mm; height: ${paper.h}mm`)
+  })
+
+  it('本文は仕上がりサイズの枠に入り、その枠が紙の中央に来る', () => {
+    const html = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))], trimMarks: true })
+    const m = html.match(/class="wowd-print-trim-area" style="([^"]+)"/)
+    expect(m, '仕上がりサイズの枠が無い').not.toBeNull()
+    const style = m?.[1] ?? ''
+    expect(style).toContain('left:13mm')
+    expect(style).toContain('top:13mm')
+    // 枠の大きさは仕上がりサイズそのもの
+    const size = style.match(/width:([\d.]+)mm;height:([\d.]+)mm/)
+    expect(Number(size?.[1])).toBeCloseTo(A4_W, 1)
+    expect(Number(size?.[2])).toBeCloseTo(A4_H, 1)
+  })
+
+  it('トンボの線が SVG で入る', () => {
+    const html = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))], trimMarks: true })
+    expect(html).toContain('class="wowd-print-marks"')
+    expect(html).toContain('<path d="M')
+    // 印刷に JavaScript は使えないので、画像でも外部参照でもなく素の SVG であること
+    expect(html).not.toContain('<script')
+    expect(html).not.toContain('<img')
+  })
+
+  it('本文の位置指定はトンボの有無で変わらない (枠ごと動かしているので)', () => {
+    const plain = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))] })
+    const trimmed = buildPrintHtml({ ...base, pages: [pageOf(para('本文'))], trimMarks: true })
+    const bodyStyle = /<div class="wowd-print-body" style="([^"]+)"/
+    expect(trimmed.match(bodyStyle)?.[1]).toBe(plain.match(bodyStyle)?.[1])
   })
 })

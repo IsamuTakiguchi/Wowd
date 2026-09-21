@@ -30,6 +30,7 @@ import { twipToMm, twipToPt, halfPtToPt } from '../../shared/units'
 import { escapeXml } from '../docx/xml'
 import { resolveField } from '../fields'
 import { pickHeaderFooterRef } from '../layout/pageGeometry'
+import { trimMarkLayout, trimMarkSvg, type TrimMarkLayout } from '../layout/trimMarks'
 import { imageWrapStyle } from './imageCss'
 
 export interface PrintPage {
@@ -50,6 +51,13 @@ export interface PrintInput {
   /** リストの行頭記号を出すために要る */
   numbering?: NumberingTable | null
   title: string
+  /**
+   * 裁ちトンボを付ける。
+   *
+   * 付けると用紙は仕上がりサイズより一回り大きくなり、本文はその中央に載る。
+   * 印刷所に入稿するときに使う。ふだんの印刷では付けない。
+   */
+  trimMarks?: boolean
 }
 
 /** 印刷用文書の本文に当てるスコープ。画面側とは別にする */
@@ -65,8 +73,10 @@ export function buildPrintHtml(input: PrintInput): string {
 
   const pageRules = [...sectionsUsed.values()]
     .map((section) => {
-      const w = twipToMm(section.pgSz.w)
-      const h = twipToMm(section.pgSz.h)
+      // トンボを付けると紙が大きくなる。@page も div もその寸法で出す
+      const trim = trimLayoutFor(section, input)
+      const w = twipToMm(trim ? trim.sheetInline : section.pgSz.w)
+      const h = twipToMm(trim ? trim.sheetBlock : section.pgSz.h)
       // mm で出す。pt だと @page と div の幅が別々に丸められ、
       // 1 枚ごとに数 px の余りページができる
       return [
@@ -75,6 +85,16 @@ export function buildPrintHtml(input: PrintInput): string {
       ].join('\n')
     })
     .join('\n')
+
+  // トンボを使うときだけ規則を出す。使わない文書に余計な CSS を混ぜない
+  const trimCss =
+    input.trimMarks === true
+      ? [
+          '/* トンボを付けたときの、仕上がりサイズの枠。本文はこの中に収める */',
+          '.wowd-print-trim-area { position: absolute; overflow: hidden; }',
+          '.wowd-print-marks { position: absolute; left: 0; top: 0; }'
+        ].join('\n')
+      : ''
 
   const defaultRun = styles.docDefaults.rPr
   const bodyFont = fontsToCss(defaultRun?.rFonts ?? null)
@@ -109,6 +129,7 @@ ${bodySize ? `  font-size: ${bodySize};` : ''}
   background: #fff;
 }
 .wowd-list-marker { white-space: pre; }
+${trimCss}
 .wowd-print-page:last-child { break-after: auto; }
 .wowd-print-body p, .wowd-print-body h1, .wowd-print-body h2, .wowd-print-body h3,
 .wowd-print-body h4, .wowd-print-body h5, .wowd-print-body h6 { margin: 0; }
@@ -169,11 +190,46 @@ function renderPage(page: PrintPage, input: PrintInput, total: number): string {
     `height:${pt(section.pgSz.h - section.pgMar.top - section.pgMar.bottom)}`
   ].join(';')
 
-  return `<div class="wowd-print-page" data-section="${escapeAttr(section.id)}">
-${headerHtml}
+  const inner = `${headerHtml}
 <div class="wowd-print-body" style="${bodyStyle}">${renderBlocks(page.blocks, input, fieldContext)}</div>
-${footerHtml}
+${footerHtml}`
+
+  const trim = trimLayoutFor(section, input)
+  if (!trim) {
+    return `<div class="wowd-print-page" data-section="${escapeAttr(section.id)}">
+${inner}
 </div>`
+  }
+
+  // 本文は仕上がりサイズの枠に入れ、その枠ごと紙の中央に置く。
+  // 枠の中では left/top が仕上がりの角からの距離になるので、
+  // ヘッダー・本文・フッターの指定はトンボの有無で変えなくてよい
+  const sheetW = twipToMm(trim.sheetInline)
+  const sheetH = twipToMm(trim.sheetBlock)
+  const marks = trimMarkSvg(trim, { width: `${round(sheetW)}mm`, height: `${round(sheetH)}mm` })
+  const areaStyle = [
+    `left:${round(twipToMm(trim.offset))}mm`,
+    `top:${round(twipToMm(trim.offset))}mm`,
+    `width:${round(twipToMm(section.pgSz.w))}mm`,
+    `height:${round(twipToMm(section.pgSz.h))}mm`
+  ].join(';')
+
+  return `<div class="wowd-print-page" data-section="${escapeAttr(section.id)}">
+${marks.replace('<svg ', '<svg class="wowd-print-marks" ')}
+<div class="wowd-print-trim-area" style="${areaStyle}">
+${inner}
+</div>
+</div>`
+}
+
+/**
+ * このセクションのトンボの寸法。付けない設定なら null。
+ *
+ * 仕上がりサイズはセクションごとに違いうるので、セクション単位で求める。
+ */
+function trimLayoutFor(section: SectionProps, input: PrintInput): TrimMarkLayout | null {
+  if (input.trimMarks !== true) return null
+  return trimMarkLayout({ finishInline: section.pgSz.w, finishBlock: section.pgSz.h })
 }
 
 interface FieldContext {
