@@ -10,6 +10,9 @@ npm run web:preview    # http://localhost:4173 で配る (LAN からも開ける
 npm run test:web       # ブラウザ版の E2E (PC と Pixel 7 の設定)
 ```
 
+画面の広さへの追従 (スマホ・タブレット・狭い窓) は `docs/responsive.md` に分けてある。
+デスクトップ版にも同じ仕組みが効く。
+
 ## 作り
 
 画面のコード (`src/renderer`) と文書のコード (`src/core`) は Electron 版と**完全に同じ**。

@@ -23,6 +23,20 @@ import { twipToCssPx } from '@core/layout/pageGeometry'
 import { HorizontalRuler, VerticalRuler } from '../components/Ruler'
 
 /**
+ * 窓の端と紙のあいだに残す余白 (px)。
+ * ぴったりに詰めると縦スクロールバーが出た瞬間に横スクロールも出る
+ */
+const VIEWPORT_GUTTER = 24
+
+/**
+ * 縦ルーラのために紙の左に空けておく幅 (px)。
+ *
+ * 空けないと、窓が狭いときに紙が左端まで寄ってルーラが切れる。
+ * 「出しているのに読めない」より、そのぶん紙を縮めるほうがまし
+ */
+const VERTICAL_RULER_RESERVE = 28
+
+/**
  * 文書本体のエディタ。
  *
  * 本文は単一の連続フローとして描き、ページ分割は
@@ -42,6 +56,8 @@ export function WowdEditor({
   const setDocProvider = useDocumentStore((s) => s.setDocProvider)
 
   const zoom = useUiStore((s) => s.zoom)
+  const zoomMode = useUiStore((s) => s.zoomMode)
+  const setEffectiveZoom = useUiStore((s) => s.setEffectiveZoom)
   const viewMode = useUiStore((s) => s.viewMode)
   const showGrid = useUiStore((s) => s.showGrid)
   const showRuler = useUiStore((s) => s.showRuler)
@@ -54,21 +70,25 @@ export function WowdEditor({
   const mobile = useIsMobile()
 
   /**
-   * スマホの印刷レイアウトでは、紙を画面の幅に合わせて縮める。
+   * 紙が窓に収まらないときは、収まる倍率まで縮める。
+   *
    * A4 は 794px あり、412px の画面では右側が見えない (実測した)。
-   * 画面の幅は回転で変わるので、ResizeObserver で追う
+   * スマホに限った話ではなく、窓を半分にしたパソコンでも同じことが起きる。
+   * 画面の幅は回転でも窓の操作でも変わるので、ResizeObserver で追う。
+   *
+   * **端末の種類では分けない。** 実際の幅だけを見る
    */
   const viewportRef = useRef<HTMLDivElement>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
   useEffect(() => {
     const el = viewportRef.current
-    if (!el || !mobile) return
+    if (!el) return
     const update = (): void => setViewportWidth(el.clientWidth)
     update()
     const observer = new ResizeObserver(update)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [mobile])
+  }, [])
 
   /** 文書差し替え中に onUpdate が走って dirty が立つのを防ぐ */
   const loading = useRef(false)
@@ -284,16 +304,37 @@ export function WowdEditor({
    * それでは「画面の見た目と PDF 出力が一致する」という前提が崩れる。
    * transform は見た目だけを拡大するので、実測値も改ページ位置も変わらない。
    */
-  // スマホの印刷レイアウトは、利用者の倍率ではなく画面の幅に合わせる
-  const fitScale =
-    mobile && isPrintView && viewportWidth > 0
-      ? Math.min(1, (viewportWidth - 16) / geometry.pageInline)
-      : null
-  const scale = snapScale(fitScale ?? zoom / 100)
   // スマホの下書き表示は紙の幅を捨てて、画面いっぱいに流す。
   // トンボを出すときは紙が左右に広がるので、舞台もそのぶん広げる
   const stageWidth =
     mobile && !isPrintView ? undefined : geometry.pageInline + trimOffset * 2
+
+  /**
+   * 窓に収まる倍率。
+   *
+   * A4 は 794px あるので、窓を狭めるとすぐ紙が右へはみ出す。
+   * 収まらないときだけ縮める。収まるなら 100% のまま拡大はしない
+   * (勝手に大きくすると、窓を広げただけで文字の大きさが変わって驚く)。
+   */
+  const rulerReserve = isPrintView && showRuler && !mobile ? VERTICAL_RULER_RESERVE : 0
+  const fitScale =
+    isPrintView && viewportWidth > 0 && stageWidth != null
+      ? Math.min(1, (viewportWidth - VIEWPORT_GUTTER - rulerReserve) / stageWidth)
+      : 1
+
+  /**
+   * 実際に掛ける倍率。
+   *
+   * 既定 (auto) は「収まらないときだけ縮める」。
+   * 倍率に触れた時点で manual になり、以後は指定どおりにする。
+   * ただしスマホでは指でつまんで直せないので、常に幅に合わせる。
+   */
+  const scale = snapScale(mobile || zoomMode === 'auto' ? fitScale : zoom / 100)
+
+  // 実際に掛かっている倍率をステータスバーへ。指定した値と食い違いうるので
+  useEffect(() => {
+    setEffectiveZoom(Math.round(scale * 100))
+  }, [scale, setEffectiveZoom])
 
   return (
     <div
@@ -302,6 +343,7 @@ export function WowdEditor({
       data-view-mode={viewMode}
       data-revisions={revisionDisplay}
       data-mobile={mobile ? 'true' : undefined}
+      data-ruler={rulerReserve > 0 ? 'true' : undefined}
     >
       {styleSheet && <style data-wowd-styles="">{styleSheet}</style>}
 

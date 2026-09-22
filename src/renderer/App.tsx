@@ -16,7 +16,7 @@ import { exportPdf, registerPrintSource } from './print/exportPdf'
 import { startAutosave, saveRecoveryNow } from './store/autosave'
 import { RecoveryBanner } from './components/RecoveryBanner'
 import { platform } from './platform'
-import { useIsMobile } from './hooks/useIsMobile'
+import { useLayoutSize } from './hooks/useIsMobile'
 import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
 
 export function App(): React.JSX.Element {
@@ -25,7 +25,8 @@ export function App(): React.JSX.Element {
   const store = useDocumentStore()
   const toggleFind = useUiStore((s) => s.toggleFind)
   const setViewMode = useUiStore((s) => s.setViewMode)
-  const mobile = useIsMobile()
+  const size = useLayoutSize()
+  const mobile = size === 'compact'
 
   // スマホでは最初だけ下書き表示にする。A4 の紙を縮めると字が読めないので、
   // 読むには画面の幅で折り返す下書き表示が向く。切り替えは利用者に任せる
@@ -168,7 +169,9 @@ export function App(): React.JSX.Element {
   }, [])
 
   return (
-    <div className={mobile ? 'app is-mobile' : 'app'}>
+    // 画面の広さは CSS からも使う。判定を JS と CSS の 2 か所に書くと必ずずれるので、
+    // 決めるのは useLayoutSize だけにして、結果を属性で渡す
+    <div className={mobile ? 'app is-mobile' : 'app'} data-size={size}>
       {mobile ? <MobileTopBar editor={editor} /> : <Ribbon editor={editor} />}
 
       <RecoveryBanner />

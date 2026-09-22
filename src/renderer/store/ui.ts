@@ -25,9 +25,29 @@ export type DialogKind = 'ruby' | 'pageSetup' | 'headerFooter' | null
  */
 export type RevisionDisplay = 'all' | 'final' | 'original'
 
+/**
+ * 倍率の決め方。
+ *
+ *  auto   … 紙が窓に収まらないときだけ縮める。収まるなら 100%
+ *  manual … 利用者が指定した倍率をそのまま使う
+ *
+ * 既定は auto。窓を狭めただけで紙の右半分が見えなくなるのを防ぐ。
+ * 倍率をいじった時点で manual に移り、以後は黙って変えない。
+ */
+export type ZoomMode = 'auto' | 'manual'
+
 export interface UiState {
   tab: RibbonTab
   zoom: number
+  zoomMode: ZoomMode
+  /**
+   * 実際に画面へ掛かっている倍率 (%)。
+   *
+   * auto のときは窓の幅で決まるので、利用者が指定した zoom とは違う。
+   * ステータスバーにはこちらを出す。違う数字を出すと、
+   * 「100% と書いてあるのに紙が小さい」ことになる。
+   */
+  effectiveZoom: number
   findOpen: boolean
   viewMode: ViewMode
   /** 原稿用紙のマス目を表示する */
@@ -66,6 +86,9 @@ export interface UiState {
   setTab: (tab: RibbonTab) => void
   setZoom: (zoom: number) => void
   nudgeZoom: (delta: number) => void
+  /** 「幅に合わせる」。自動で決め直させる */
+  fitZoom: () => void
+  setEffectiveZoom: (percent: number) => void
   toggleFind: (open?: boolean) => void
   setViewMode: (mode: ViewMode) => void
   toggleGrid: (on?: boolean) => void
@@ -133,6 +156,8 @@ function saveFlag(key: string, on: boolean): void {
 export const useUiStore = create<UiState>((set) => ({
   tab: 'home',
   zoom: 100,
+  zoomMode: 'auto',
+  effectiveZoom: 100,
   findOpen: false,
   viewMode: 'print',
   showGrid: false,
@@ -150,9 +175,14 @@ export const useUiStore = create<UiState>((set) => ({
   revisionDisplay: 'all',
 
   setTab: (tab) => set({ tab }),
-  setZoom: (zoom) => set({ zoom: clamp(zoom) }),
+  // 倍率に触れたら、以後は自動で変えない
+  setZoom: (zoom) => set({ zoom: clamp(zoom), zoomMode: 'manual' }),
   // delta 0 は「100% に戻す」の意味で使う
-  nudgeZoom: (delta) => set((s) => ({ zoom: delta === 0 ? 100 : clamp(s.zoom + delta) })),
+  nudgeZoom: (delta) =>
+    set((s) => ({ zoom: delta === 0 ? 100 : clamp(s.zoom + delta), zoomMode: 'manual' })),
+  fitZoom: () => set({ zoomMode: 'auto' }),
+  setEffectiveZoom: (percent) =>
+    set((s) => (s.effectiveZoom === percent ? s : { effectiveZoom: percent })),
   toggleFind: (open) => set((s) => ({ findOpen: open ?? !s.findOpen })),
   setViewMode: (viewMode) => set({ viewMode }),
   toggleGrid: (on) => set((s) => ({ showGrid: on ?? !s.showGrid })),

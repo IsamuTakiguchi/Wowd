@@ -1378,3 +1378,136 @@ body {
 .wowd-trim-marks svg {
   display: block;
 }
+
+/* ---- 画面の広さに応じた作り ------------------------------------------- */
+
+/*
+ * 広さの段階は src/renderer/hooks/useIsMobile.ts が決め、
+ * .app[data-size] で降りてくる。**判定をここにも書かない。**
+ * 2 か所に書くと必ずずれて、「CSS は詰めているのにリボンは出たまま」になる。
+ *
+ *   compact … スマホ (縦も横も)。上下のバーだけ
+ *   medium  … タブレットの縦、半分にした窓。リボンは出すが詰める
+ *   full    … 普通のパソコンの窓
+ */
+
+/* ── 幅に合わせるボタン (ステータスバー) ── */
+
+.statusbar-zoom button {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.statusbar-zoom button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.statusbar-zoom button.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── medium: リボンを詰める ── */
+
+.app[data-size='medium'] .ribbon-tab {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.app[data-size='medium'] .ribbon-tab-body {
+  padding: 2px 4px;
+}
+
+.app[data-size='medium'] .ribbon-group {
+  padding: 2px 6px;
+}
+
+.app[data-size='medium'] .ribbon-panel {
+  min-height: 84px;
+}
+
+/* タブが入りきらないときは横に流す。畳んで隠すと押せないタブが出る */
+.ribbon-tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ribbon-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ribbon-tab {
+  white-space: nowrap;
+  flex: none;
+}
+
+/* ── medium: コメントは横に並べず、紙の上に重ねる ── */
+
+/*
+ * 280px のペインを横に並べると、1100px の窓でも本文に 800px しか残らない。
+ * A4 (794px) がぎりぎりで、ルーラを出すと溢れる。重ねれば紙の幅は減らない。
+ */
+.app-body {
+  position: relative;
+}
+
+.app[data-size='medium'] .comments-pane {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(320px, 80vw);
+  z-index: 5;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.18);
+}
+
+/* ── 狭いときはステータスバーの数え方を間引く ── */
+
+.app[data-size='medium'] .statusbar-optional {
+  display: none;
+}
+
+/* ── ダイアログが画面からはみ出さないようにする ── */
+
+.wowd-dialog {
+  max-width: calc(100vw - 24px);
+  /* dvh はスマホのアドレスバーの出入りで変わる高さ。vh だと隠れる */
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+
+.app.is-mobile .wowd-dialog,
+.wowd-dialog:modal {
+  /* 指で押す端末では、余白を詰めて中身を優先する */
+  max-width: calc(100vw - 16px);
+}
+
+/* ── 倒したスマホ: ノッチが横に来る ── */
+
+.app.is-mobile .mobile-topbar,
+.app.is-mobile .mobile-bottombar {
+  padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+}
+
+.app.is-mobile .wowd-viewport {
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+/*
+ * 縦ルーラは紙の左外に置く。その幅を窓の側で空けておかないと、
+ * 窓が狭いときに紙が左端まで寄ってルーラが切れる。
+ * 空けた幅は紙の倍率にも織り込んである (VERTICAL_RULER_RESERVE)
+ */
+.wowd-viewport[data-ruler='true'] {
+  padding-inline-start: 28px;
+}
+
+/* 倒したスマホでは下のバーが横に間延びする。押しやすさは幅ではなく高さで決まる */
+.mobile-bottombar .grow {
+  max-width: 420px;
+}
