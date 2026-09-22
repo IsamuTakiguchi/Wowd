@@ -159,3 +159,23 @@ test('ダイアログが画面からはみ出さない', async ({ page }) => {
   })
   expect(limited, 'ダイアログに幅の上限が無い').not.toBe('none')
 })
+
+/**
+ * 倍率を掛ける要素を GPU の層に固定しないこと。
+ *
+ * will-change: transform を付けると、その要素の文字は
+ * 「層を作ったときの解像度」で一度だけ描かれ、あとは引き伸ばされる。
+ * iOS の WebKit は層が大きいとさらに低い解像度で描くので、
+ * 長い文書ほど字が眠くなる (スマホでぼやけて見えると指摘された)。
+ *
+ * 付けなければブラウザが transform 後の実寸で描き直す。
+ */
+test('紙を拡大縮小しても文字がぼやけない指定になっている', async ({ page }) => {
+  await openAt(page, 390, 844)
+  const hint = await page.evaluate(() => {
+    const el = document.querySelector('.wowd-scaler')
+    return el ? getComputedStyle(el).willChange : null
+  })
+  expect(hint, '.wowd-scaler が見つからない').not.toBeNull()
+  expect(hint, 'will-change で層に固定されている').toBe('auto')
+})
