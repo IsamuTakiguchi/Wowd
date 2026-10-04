@@ -54,7 +54,7 @@ export function writeLevel(level: NumberingLevel): string {
 export function writeNumbering(table: NumberingTable, originalXml: string | null = null): string {
   const abstracts = [...table.abstract.values()]
     .sort((a, b) => a.abstractNumId - b.abstractNumId)
-    .map((a) => a.rawXml || writeAbstractNum(a.abstractNumId, [...a.levels.values()]))
+    .map((a) => a.rawXml || writeAbstractNum(a.abstractNumId, [...a.levels.values()], a.multiLevelType))
     .join('')
 
   const nums = [...table.instances.values()]
@@ -91,9 +91,13 @@ export function writeNum(n: NumInstance): string {
   return wrap('w:num', { 'w:numId': n.numId }, valEl('w:abstractNumId', n.abstractNumId) + overrides)
 }
 
-export function writeAbstractNum(abstractNumId: number, levels: NumberingLevel[]): string {
+export function writeAbstractNum(
+  abstractNumId: number,
+  levels: NumberingLevel[],
+  multiLevelType: string | null = null
+): string {
   const body =
-    valEl('w:multiLevelType', levels.length > 1 ? 'hybridMultilevel' : 'singleLevel') +
+    valEl('w:multiLevelType', multiLevelType ?? (levels.length > 1 ? 'hybridMultilevel' : 'singleLevel')) +
     levels
       .slice()
       .sort((a, b) => a.ilvl - b.ilvl)

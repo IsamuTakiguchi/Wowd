@@ -91,6 +91,10 @@ export interface UiState {
   /** 変更履歴の表示モード */
   revisionDisplay: RevisionDisplay
 
+  /** 画面下に一時的に出す知らせ (「連番ランクを設定しました」など)。null は出さない */
+  notice: string | null
+  /** 知らせを出す。数秒で消える */
+  notify: (message: string | null) => void
   setTab: (tab: RibbonTab) => void
   setZoom: (zoom: number) => void
   nudgeZoom: (delta: number) => void
@@ -163,6 +167,10 @@ function saveFlag(key: string, on: boolean): void {
   }
 }
 
+/** 知らせを出しておく時間 */
+const NOTICE_MS = 4000
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useUiStore = create<UiState>((set) => ({
   tab: 'home',
   zoom: 100,
@@ -184,7 +192,13 @@ export const useUiStore = create<UiState>((set) => ({
   tracking: false,
   author: loadAuthor(),
   revisionDisplay: 'all',
+  notice: null,
 
+  notify: (message) => {
+    if (noticeTimer) clearTimeout(noticeTimer)
+    set({ notice: message })
+    if (message) noticeTimer = setTimeout(() => set({ notice: null }), NOTICE_MS)
+  },
   setTab: (tab) => set({ tab }),
   // 倍率に触れたら、以後は自動で変えない
   setZoom: (zoom) => set({ zoom: clamp(zoom), zoomMode: 'manual' }),

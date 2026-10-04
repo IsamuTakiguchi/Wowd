@@ -22,6 +22,11 @@ export interface ListMarker {
   /** 記号のあとに入れる区切り */
   suffix: string
   level: NumberingLevel
+  /** この段落の番号の値 (1 始まりの序数)。番号を後から直す処理 (連番ランク修正) が使う */
+  value: number
+  /** 番号を決めた numId と ilvl。スタイル経由なら解決後の値 */
+  numId: number
+  ilvl: number
 }
 
 /**
@@ -88,7 +93,10 @@ export function computeListMarkers(
     out.set(index, {
       text,
       suffix: level.suff === 'tab' ? '	' : level.suff === 'space' ? ' ' : '',
-      level
+      level,
+      value: counter[ilvl] ?? 0,
+      numId,
+      ilvl
     })
   })
 

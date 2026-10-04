@@ -55,6 +55,9 @@ export function ensureListDefinition(
   kind: ListKind
 ): { numId: number; created: boolean } {
   for (const instance of table.instances.values()) {
+    // 見出しスタイルに結び付いた番号 (連番ランクなど) は流用しない。
+    // 流用すると、ふつうのリストに「第１」「⑴」が付いてしまう
+    if (isStyleLinked(table, instance)) continue
     const level0 = resolveLevel0(table, instance)
     if (!level0) continue
     const isBullet = level0.numFmt === 'bullet'
@@ -80,6 +83,11 @@ export function ensureListDefinition(
   table.instances.set(numId, instance)
 
   return { numId, created: true }
+}
+
+function isStyleLinked(table: NumberingTable, instance: NumInstance): boolean {
+  const levels = table.abstract.get(instance.abstractNumId)?.levels
+  return levels ? [...levels.values()].some((l) => l.pStyle) : false
 }
 
 function resolveLevel0(table: NumberingTable, instance: NumInstance): NumberingLevel | null {

@@ -19,6 +19,8 @@ import { platform } from './platform'
 import { useLayoutSize } from './hooks/useIsMobile'
 import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
 import { TabBar } from './components/TabBar'
+import { handleOkaguchiKey } from './okaguchi/keys'
+import { Notice } from './components/Notice'
 import { useTabsStore, nameFirstDocument } from './store/tabs'
 import { startFileAutosave } from './store/fileAutosave'
 
@@ -81,6 +83,19 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
+
+  /**
+   * 岡口マクロのキー (Alt+R, Alt+1〜8 など)。
+   *
+   * エディタより先に受ける (capture)。Alt+R を止めないと、メニューの「校閲(&R)」が開く
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      handleOkaguchiKey(e, editor)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [editor])
 
   /**
    * 自動保存。未保存の変更を一定間隔で退避する。
@@ -248,6 +263,7 @@ export function App(): React.JSX.Element {
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
       <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
 
+      <Notice />
       <TabBar compact={mobile} />
       {mobile ? <MobileBottomBar editor={editor} /> : <StatusBar editor={editor} />}
     </div>
