@@ -25,7 +25,7 @@ import type {
 import { computeListMarkers, type ListMarker } from '../numbering/markers'
 import { markerCss } from '../numbering/markerCss'
 import { paragraphAttrsToStyle } from './paragraphCss'
-import { runPropsToStyle, DEFAULT_RUN_PROPS, fontsToCss } from './runCss'
+import { runPropsToStyle, DEFAULT_RUN_PROPS, fontsToCss, scaleMarginEm } from './runCss'
 import { buildStyleSheet } from './styleSheet'
 import { twipToMm, twipToPt, halfPtToPt } from '../../shared/units'
 import { escapeXml } from '../docx/xml'
@@ -369,7 +369,13 @@ function renderTable(
 function renderInline(node: InlineNode, input: PrintInput, ctx: FieldContext): string {
   switch (node.type) {
     case 'text': {
-      const style = inlineStyleOf(node.marks)
+      const runW = ((node.marks ?? []) as { type: string; attrs?: RunProps }[]).find(
+        (m) => m.type === 'textStyle'
+      )?.attrs?.w
+      const shrink = scaleMarginEm(node.text, runW)
+      const style = [inlineStyleOf(node.marks), shrink != null ? `margin-right:${shrink}em` : '']
+        .filter(Boolean)
+        .join(';')
       const text = escapeXml(node.text)
       return style ? `<span style="${escapeAttr(style)}">${text}</span>` : text
     }

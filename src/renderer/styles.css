@@ -695,6 +695,62 @@ body {
   gap: 6px;
 }
 
+.wowd-dialog-fieldset {
+  border: 1px solid #d8d8d8;
+  border-radius: 3px;
+  padding: 6px 10px 8px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.wowd-dialog-fieldset > legend {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.wowd-dialog-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wowd-dialog-field .wowd-dialog-radio input,
+.wowd-dialog-radio input {
+  height: auto;
+}
+
+/* 入力画面 (岡口マクロのフォームなど)。見出しと欄を 2 列に並べる */
+.wowd-dialog-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.wowd-dialog-grid > label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.wowd-dialog-grid input[type='text'],
+.wowd-dialog-grid input:not([type]),
+.wowd-dialog-grid select {
+  height: 28px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+/* 入力中の欄は薄い黄色。元のマクロのフォームと同じ合図 */
+.wowd-dialog input:focus {
+  background: #fffbe0;
+}
+
 .wowd-dialog-note {
   margin: 0;
   font-size: 11px;
@@ -1826,4 +1882,8 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   z-index: 1000;
   cursor: pointer;
+}
+
+.wowd-dialog-error {
+  color: #b3261e;
 }

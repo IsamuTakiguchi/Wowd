@@ -13,7 +13,20 @@ export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' |
 export type ViewMode = 'print' | 'draft'
 
 /** 開いているモーダルダイアログ */
-export type DialogKind = 'ruby' | 'pageSetup' | 'headerFooter' | null
+export type DialogKind =
+  | 'ruby'
+  | 'pageSetup'
+  | 'headerFooter'
+  // 岡口マクロの入力画面
+  | 'okaguchiFormat'
+  | 'okaguchiDate'
+  | 'okaguchiWide'
+  | 'okaguchiPerson'
+  | 'okaguchiCorp'
+  | 'okaguchiInterest'
+  | 'okaguchiProperty'
+  | 'okaguchiPostSet'
+  | null
 
 /**
  * 変更履歴の表示モード。

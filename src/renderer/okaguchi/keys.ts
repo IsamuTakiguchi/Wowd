@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import { applyRank, restartRank, setupRankStyles, fixRankHalfWidth } from './rank'
+import { useUiStore, type DialogKind } from '../store/ui'
 
 /**
  * 岡口マクロのキー割り当て。元のマクロ (Normal.dotm に登録するもの) と同じキーにする。
@@ -23,6 +24,24 @@ for (let n = 1; n <= 8; n++) {
 actions.set('Alt+KeyR', (editor) => setupRankStyles(editor) !== null)
 actions.set('Alt+Shift+KeyR', (editor) => fixRankHalfWidth(editor))
 
+/** 入力画面を開くキー (元のマクロのフォームと同じ割り当て) */
+const DIALOG_KEYS: [string, DialogKind][] = [
+  ['Alt+KeyP', 'okaguchiFormat'],
+  ['Alt+KeyT', 'okaguchiDate'],
+  ['Alt+KeyZ', 'okaguchiWide'],
+  ['Alt+KeyM', 'okaguchiPerson'],
+  ['Alt+KeyK', 'okaguchiCorp'],
+  ['Alt+KeyC', 'okaguchiInterest'],
+  ['Alt+KeyB', 'okaguchiProperty'],
+  ['Alt+KeyJ', 'okaguchiPostSet']
+]
+for (const [combo, kind] of DIALOG_KEYS) {
+  actions.set(combo, () => {
+    useUiStore.getState().openDialog(kind)
+    return true
+  })
+}
+
 /** 押されたキーに対応する操作の名前。対応が無ければ null */
 export function comboOf(e: KeyboardEvent): string | null {
   if (!e.altKey || e.ctrlKey || e.metaKey) return null
@@ -44,7 +63,7 @@ export function handleOkaguchiKey(e: KeyboardEvent, editor: Editor | null): bool
   const inEditor = target?.closest?.('.ProseMirror') != null
   const inField = target != null && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
   if (inField && !inEditor) return false
-  if (target?.closest?.('[role="dialog"]')) return false
+  if (target?.closest?.('dialog, [role="dialog"]')) return false
   e.preventDefault()
   e.stopPropagation()
   action(editor)

@@ -14,6 +14,7 @@ import { RawBlock, RawRun } from './RawContent'
 import { WTab } from './WTab'
 import { PageBreak, SectionBreak } from './PageBreak'
 import { Numbering } from './Numbering'
+import { RunScale } from './RunScale'
 import { Shortcuts } from './Shortcuts'
 import { TrackChanges } from '../track/TrackChanges'
 import { Ruby, Field, Bookmark, WBreak } from './InlineNodes'
@@ -76,6 +77,7 @@ export function buildExtensions(): (Extension | Node | Mark)[] {
     WTableHeader,
 
     Numbering,
+    RunScale,
     // Tab は Numbering と WTab が先に処理するので、その後ろに置く
     Shortcuts,
     TrackChanges,

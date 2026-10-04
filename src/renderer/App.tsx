@@ -21,6 +21,7 @@ import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
 import { TabBar } from './components/TabBar'
 import { handleOkaguchiKey } from './okaguchi/keys'
 import { Notice } from './components/Notice'
+import { OkaguchiDialogs } from './okaguchi/OkaguchiDialogs'
 import { useTabsStore, nameFirstDocument } from './store/tabs'
 import { startFileAutosave } from './store/fileAutosave'
 
@@ -262,6 +263,7 @@ export function App(): React.JSX.Element {
       />
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
       <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
+      <OkaguchiDialogs editor={editor} />
 
       <Notice />
       <TabBar compact={mobile} />

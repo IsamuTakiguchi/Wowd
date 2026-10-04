@@ -8,7 +8,7 @@ import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { RankStyleIds } from '@core/okaguchi/rank'
 
-const FULL_SPACE = '　'
+const FULL_SPACE = '\u3000'
 
 export interface RankOptions {
   /** 打直。トグルせず常にランクにし、この numPr で番号を振り直す */

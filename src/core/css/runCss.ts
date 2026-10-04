@@ -50,7 +50,14 @@ export function runPropsToStyle(rp: RunProps): string {
   if (rp.highlight && rp.highlight !== 'none') css['background-color'] = rp.highlight
   if (rp.shd && rp.shd !== 'auto') css['background-color'] = `#${rp.shd}`
   if (rp.spacing != null) css['letter-spacing'] = `${twipToPt(rp.spacing)}pt`
-  if (rp.w != null) css['transform'] = `scaleX(${rp.w / 100})`
+  if (rp.w != null && rp.w !== 100) {
+    // transform は inline の箱には効かないので inline-block にする。
+    // 縮めたぶん詰める余白 (margin-right) は文字列で決まるので、scaleMarginEm で別に足す
+    css['display'] = 'inline-block'
+    css['transform'] = `scaleX(${rp.w / 100})`
+    css['transform-origin'] = 'left'
+    css['white-space'] = 'pre'
+  }
   if (rp.vertAlign === 'superscript') {
     css['vertical-align'] = 'super'
     css['font-size'] = 'smaller'
@@ -64,3 +71,36 @@ export function runPropsToStyle(rp: RunProps): string {
     .join(';')
 }
 
+
+/**
+ * 文字列の幅の見積もり (em)。全角は 1、半角は 0.5 とする。
+ *
+ * 明朝などの和文フォントの半角は全角のちょうど半分なので、この見積もりで合う。
+ * 欧文のプロポーショナルフォントではずれるが、横幅を縮める用途 (括弧を半分に、など)
+ * では十分に近い。
+ */
+export function estimateTextEm(text: string): number {
+  let em = 0
+  for (const ch of text) em += isWide(ch) ? 1 : 0.5
+  return em
+}
+
+function isWide(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0
+  // 半角カナ (U+FF61–FF9F) と ASCII・ラテン文字は半角
+  if (c < 0x1100) return false
+  if (c >= 0xff61 && c <= 0xff9f) return false
+  return true
+}
+
+/**
+ * 文字の横幅 (w:w) を縮めたときに詰める量。
+ *
+ * scaleX は見た目だけを縮め、行の中で占める幅は元のまま残る。
+ * Word では横幅を縮めると後ろの文字も詰まるので、その差を負の余白で詰める。
+ * 縮めないとき (w が無い・100) は null。
+ */
+export function scaleMarginEm(text: string, w: number | null | undefined): number | null {
+  if (w == null || w === 100) return null
+  return -Math.round((1 - w / 100) * estimateTextEm(text) * 1000) / 1000
+}
