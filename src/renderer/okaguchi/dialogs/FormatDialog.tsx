@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { Dialog, Field } from '../../components/dialogs/Dialog'
-import { useDocumentStore } from '../../store/document'
 import { useUiStore } from '../../store/ui'
-import { LATIN_FONTS, courtStyles, courtSection, type LatinFont } from '@core/okaguchi/pageFormat'
-import { fromEditableText, PAGE_TOKEN } from '@core/headerFooter'
-import { ensureHeaderFooter } from '../../editor/commands/headerFooter'
+import { LATIN_FONTS, type LatinFont } from '@core/okaguchi/pageFormat'
+import { applyCourtFormat } from '../format'
 
 /**
  * 書式変更 (Alt+P)。文書を裁判所書式 (A4・37 字 × 26 行・12pt) にする。
@@ -16,21 +14,7 @@ export function FormatDialog({ onClose }: { onClose: () => void }): React.JSX.El
   const [lineNumbers, setLineNumbers] = useState(false)
 
   const apply = (): void => {
-    const store = useDocumentStore.getState()
-    const document = store.document
-    const section = document?.resources.sections[0]
-    if (!document || !section) return
-
-    store.updateStyles(courtStyles(document.resources.styles, latin))
-    let next = courtSection(section, lineNumbers)
-
-    // フッターはページ番号 (中央) だけにする。元のマクロも中身を置き換える
-    const latest = useDocumentStore.getState().document!
-    const footer = ensureHeaderFooter(latest, next, 'footer', 'default')
-    next = footer.section
-    store.updateSection(0, () => next)
-    store.updateHeaderFooter('footer', footer.relId, fromEditableText(PAGE_TOKEN, 'center'))
-
+    if (!applyCourtFormat(latin, lineNumbers)) return
     useUiStore.getState().notify('書式変更が完了しました (A4・37 字 × 26 行・12pt)')
     onClose()
   }

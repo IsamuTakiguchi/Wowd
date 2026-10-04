@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view'
+export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'okaguchi'
 
 /**
  * 表示モード。

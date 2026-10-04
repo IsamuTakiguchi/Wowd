@@ -3,7 +3,9 @@ import type { Editor } from '@tiptap/react'
 import { useDocumentStore } from '../../store/document'
 import { useTabsStore } from '../../store/tabs'
 import { AutoSaveToggle } from '../AutoSaveToggle'
-import { useUiStore, type RevisionDisplay } from '../../store/ui'
+import { useUiStore, type RevisionDisplay, type DialogKind } from '../../store/ui'
+import { RANK_GLYPHS } from '../Ribbon/OkaguchiTab'
+import { applyRank } from '../../okaguchi/rank'
 import { threadComments } from '@core/docx/read/comments'
 import { exportPdf } from '../../print/exportPdf'
 import { t } from '../../i18n/ja'
@@ -23,6 +25,17 @@ import { t } from '../../i18n/ja'
  * 同時に出ることは無く、テストが画面の幅を気にせずに済む。
  */
 
+const OKAGUCHI_ITEMS: [DialogKind, string][] = [
+  ['okaguchiDate', '日付入力'],
+  ['okaguchiInterest', '利息・日付計算'],
+  ['okaguchiPerson', '当事者欄 (自然人・代理人)'],
+  ['okaguchiCorp', '当事者欄 (法人)'],
+  ['okaguchiProperty', '物件目録'],
+  ['okaguchiWide', '全角1文字 (1)'],
+  ['okaguchiPostSet', '見出し符号の事後設定'],
+  ['okaguchiFormat', '裁判所書式にする']
+]
+
 /** 型の緩いエディタコマンドを名前で呼ぶ */
 function run(editor: Editor | null, name: string, arg?: unknown): void {
   if (!editor) return
@@ -40,6 +53,7 @@ export function MobileTopBar({ editor }: { editor: Editor | null }): React.JSX.E
   const tracking = useUiStore((s) => s.tracking)
   const setTracking = useUiStore((s) => s.setTracking)
   const [menuOpen, setMenuOpen] = useState(false)
+  const openDialog = useUiStore((s) => s.openDialog)
 
   const store = useDocumentStore.getState
   const closeThen = (fn: () => void) => (): void => {
@@ -121,6 +135,27 @@ export function MobileTopBar({ editor }: { editor: Editor | null }): React.JSX.E
             <button type="button" role="menuitem" data-testid="mobile-reject-all" onClick={closeThen(() => run(editor, 'applyAllRevisions', 'reject'))}>
               すべての変更を元に戻す
             </button>
+            {/* 岡口マクロ。スマホには Alt キーが無いので、ここから使う */}
+            <div className="mobile-menu-label">岡口マクロ (見出し)</div>
+            <div className="mobile-menu-ranks">
+              {RANK_GLYPHS.map((glyph, i) => (
+                <button
+                  key={glyph}
+                  type="button"
+                  role="menuitem"
+                  aria-label={`ランク${i + 1}`}
+                  data-testid={`mobile-rank-${i + 1}`}
+                  onClick={closeThen(() => editor && applyRank(editor, i + 1))}
+                >
+                  {glyph}
+                </button>
+              ))}
+            </div>
+            {OKAGUCHI_ITEMS.map(([kind, label]) => (
+              <button key={kind} type="button" role="menuitem" disabled={!hasDocument} onClick={closeThen(() => openDialog(kind))}>
+                {label}
+              </button>
+            ))}
           </div>
         </>
       )}

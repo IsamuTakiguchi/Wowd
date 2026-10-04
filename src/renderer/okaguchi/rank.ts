@@ -1,10 +1,13 @@
 import type { Editor } from '@tiptap/react'
+import type { Node as PMNode } from '@tiptap/pm/model'
+import { planPostSet } from '@core/okaguchi/postSet'
 import {
   setupRanks,
   findRankStyleIds,
   rankBaseNumId,
   createRestartNum,
   planHalfWidthFix,
+  rankOfStyle,
   type RankStyleIds
 } from '@core/okaguchi/rank'
 import { useDocumentStore } from '../store/document'
@@ -109,4 +112,91 @@ export function fixRankHalfWidth(editor: Editor): boolean {
     .getState()
     .notify(count > 0 ? `2 桁以上の見出し符号 ${count} か所を半角にしました` : '直す見出し符号はありませんでした')
   return true
+}
+
+/** 連番等事後設定の範囲 */
+export type PostSetScope = 'all' | 'fromCursor' | 'selection'
+
+/**
+ * 連番等事後設定 (Alt+J)。手で打った見出し符号を連番ランクに置き換える。
+ *
+ * @returns 置き換えた見出しと、本文を当てた段落の数
+ */
+export function applyPostSet(
+  editor: Editor,
+  options: { scope: PostSetScope; bodyIndent: boolean }
+): { headings: number; bodies: number } | null {
+  const ids = ensureRanks(editor)
+  const document = useDocumentStore.getState().document
+  if (!ids || !document) return null
+  const { styles, numbering } = document.resources
+  const base = rankBaseNumId(styles, ids, numbering)
+  if (base == null) return null
+
+  const { state } = editor
+  const { from, to } = state.selection
+  const all = collectTextblocks(state.doc)
+  const inScope = all.filter(({ pos, node }) => {
+    if (options.scope === 'all') return true
+    const end = pos + node.nodeSize
+    if (options.scope === 'fromCursor') return end > from
+    return end > from && pos < to
+  })
+
+  const plan = planPostSet(
+    inScope.map(({ node }) => ({
+      text: node.textContent,
+      rank: rankOfStyle(ids, (node.attrs['pStyle'] as string | null) ?? null)
+    })),
+    { bodyIndent: options.bodyIndent }
+  )
+
+  const tr = state.tr
+  let headings = 0
+  let bodies = 0
+  for (const [index, change] of plan) {
+    const target = inScope[index]
+    if (!target) continue
+    const pos = tr.mapping.map(target.pos)
+    const node = tr.doc.nodeAt(pos)
+    if (!node) continue
+    const paragraph = tr.doc.type.schema.nodes['paragraph']!
+    const styleId = change.kind === 'rank' ? ids.rank[change.level]! : ids.body[change.level]!
+    const numPr = change.restart ? { numId: createRestartNum(numbering, base, change.level - 1), ilvl: change.level - 1 } : null
+    tr.setNodeMarkup(pos, paragraph, paragraph.create({ ...node.attrs, pStyle: styleId, numPr, ind: null, jc: null }).attrs)
+    if (change.kind === 'rank') {
+      headings++
+      // 見出し符号が文字だけでできている (途中に画像などが無い) ときだけ置き換える
+      if (leadingTextLength(node) >= change.strip) {
+        tr.insertText('　', pos + 1, pos + 1 + change.strip)
+      }
+    } else {
+      bodies++
+    }
+  }
+  if (!tr.docChanged) return { headings: 0, bodies: 0 }
+  editor.view.dispatch(tr)
+  numberingChanged(editor)
+  return { headings, bodies }
+}
+
+function collectTextblocks(doc: PMNode): { pos: number; node: PMNode }[] {
+  const out: { pos: number; node: PMNode }[] = []
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true
+    out.push({ pos, node })
+    return false
+  })
+  return out
+}
+
+/** 段落の先頭から、文字だけが続く長さ */
+function leadingTextLength(node: PMNode): number {
+  let n = 0
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i)
+    if (!child.isText) break
+    n += child.text?.length ?? 0
+  }
+  return n
 }

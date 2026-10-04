@@ -3,6 +3,7 @@ import { HomeTab } from './HomeTab'
 import { FileActions } from './FileActions'
 import { AutoSaveToggle } from '../AutoSaveToggle'
 import { InsertTab, LayoutTab, ViewTab, ReferencesTab, ReviewTab } from './OtherTabs'
+import { OkaguchiTab } from './OkaguchiTab'
 import { useUiStore, type RibbonTab } from '../../store/ui'
 import { useDocumentStore } from '../../store/document'
 import { t } from '../../i18n/ja'
@@ -13,7 +14,8 @@ const TABS: { id: RibbonTab; label: string }[] = [
   { id: 'layout', label: t.ribbon.tabs.layout },
   { id: 'references', label: t.ribbon.tabs.references },
   { id: 'review', label: t.ribbon.tabs.review },
-  { id: 'view', label: t.ribbon.tabs.view }
+  { id: 'view', label: t.ribbon.tabs.view },
+  { id: 'okaguchi', label: '岡口マクロ' }
 ]
 
 export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element {
@@ -41,6 +43,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
             type="button"
             aria-selected={tab === item.id}
             className={`ribbon-tab${tab === item.id ? ' is-active' : ''}`}
+            data-testid={`ribbon-tab-${item.id}`}
             onClick={() => setTab(item.id)}
           >
             {item.label}
@@ -54,6 +57,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
         {tab === 'references' && <ReferencesTab editor={editor} />}
         {tab === 'review' && <ReviewTab editor={editor} />}
         {tab === 'view' && <ViewTab />}
+        {tab === 'okaguchi' && <OkaguchiTab editor={editor} />}
       </div>
     </header>
   )

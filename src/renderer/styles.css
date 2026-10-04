@@ -1962,3 +1962,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* 打直のボタン。番号の右上に「振り直し」の印を付ける */
+.okaguchi-restart::after {
+  content: '↺';
+  font-size: 9px;
+  vertical-align: super;
+  margin-left: 1px;
+  color: var(--ribbon-accent);
+}
+
+.mobile-menu-label {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 14px 2px;
+  border-top: 1px solid var(--ribbon-border);
+}
+
+.mobile-menu-ranks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 2px 8px 4px;
+}
+
+.mobile-menu-ranks button {
+  min-height: 36px;
+  text-align: center;
+}

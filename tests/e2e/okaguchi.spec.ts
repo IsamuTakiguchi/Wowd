@@ -220,3 +220,159 @@ test('保存すると、Word で開いても同じになる形 (スタイルと�
   expect(documentXml).not.toContain('第１')
   void readFileSync
 })
+
+/** 本文の段落の文字 (行頭記号を除く) */
+async function texts(): Promise<string[]> {
+  return (await paragraphs()).map((p) => p.text)
+}
+
+test('Alt+T 日付入力: 和暦・全角・曜日と休日', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.press('Alt+t')
+  await page.getByTestId('okaguchi-date-input').fill('r2/5/3')
+  await page.getByTestId('okaguchi-date-style-wareki').check()
+  await page.getByTestId('okaguchi-date-weekday-yes').check()
+  await page.getByTestId('okaguchi-date-holiday-yes').check()
+  await expect(page.getByTestId('okaguchi-preview')).toHaveText('令和２年５月３日（日曜日・休日（憲法記念日））')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('dialog')).toHaveCount(0)
+  expect((await texts())[0]).toBe('令和２年５月３日（日曜日・休日（憲法記念日））')
+})
+
+test('Alt+Z 全角1文字入力: 括弧を半分の幅にして全角 1 字に収める', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.type('前')
+  await page.keyboard.press('Alt+z')
+  await page.getByTestId('okaguchi-wide-input').fill('1')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('後')
+  expect((await texts())[0]).toBe('前(1)　後')
+  // 括弧の箱は縮み、後ろが詰まる: 「(1)」全体で全角 1 字ぶん前後
+  const width = await page.evaluate(() => {
+    const p = document.querySelector('.wowd-content p')!
+    const range = document.createRange()
+    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+    const nodes: Text[] = []
+    while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+    const open = nodes.find((n) => n.data === '(')!
+    const close = nodes.find((n) => n.data === ')')!
+    range.setStart(open, 0)
+    range.setEnd(close, 1)
+    const fontSize = parseFloat(getComputedStyle(p).fontSize)
+    return range.getBoundingClientRect().width / fontSize
+  })
+  expect(width).toBeGreaterThan(0.7)
+  expect(width).toBeLessThan(1.3)
+})
+
+test('Alt+M 当事者欄 (自然人): 地位と氏名を均等割り付けで差し込み、保存すると w:fitText になる', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.press('Alt+m')
+  await page.getByTestId('okaguchi-person-role').fill('g')
+  await page.getByTestId('okaguchi-person-name').fill('甲野太郎')
+  await page.getByTestId('okaguchi-person-zip').fill('1050001')
+  await page.getByTestId('okaguchi-person-address1').fill('東京都港区虎ノ門1-1-1')
+  await page.getByTestId('okaguchi-person-birth').fill('s60/5/24')
+  await page.locator('dialog button[type="submit"]').click()
+  const t = await texts()
+  expect(t[0]).toBe('〒１０５－０００１　東京都港区虎ノ門１－１－１')
+  expect(t[1]).toBe('原告　　　甲野太郎')
+  expect(t[2]).toBe('昭和６０年５月２４日生')
+  // 氏名の左端は、生年月日の左端 (23 字目) とそろう
+  const lefts = await page.$$eval('.wowd-content p', (ps) =>
+    ps.slice(1, 3).map((p) => {
+      const spans = p.querySelectorAll('span[style*="width"]')
+      return (spans[spans.length - 1] as HTMLElement).getBoundingClientRect().left
+    })
+  )
+  expect(Math.abs(lefts[0]! - lefts[1]!)).toBeLessThan(2)
+
+  const bytes = await page.evaluate(async () => {
+    const w = window as unknown as { __wowdStore: { getState: () => { saveToBytes: () => Promise<number[]> } } }
+    return w.__wowdStore.getState().saveToBytes()
+  })
+  const documentXml = strFromU8(unzipSync(new Uint8Array(bytes))['word/document.xml']!)
+  expect(documentXml).toMatch(/<w:fitText w:val="\d+" w:id="\d+"\/>/)
+  expect(documentXml).toContain('w:leftChars="2300"')
+})
+
+test('Alt+C 利息計算: 見本に結果が出て、文書に入れられる', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.press('Alt+c')
+  await page.getByTestId('okaguchi-interest-start').fill('2020/4/1')
+  await page.getByTestId('okaguchi-interest-end').fill('2021/6/30')
+  await page.getByTestId('okaguchi-interest-principal').fill('1,000,000')
+  await page.getByTestId('okaguchi-interest-rate').fill('3')
+  await expect(page.getByTestId('okaguchi-preview')).toContainText('利息　３７４７９円')
+  await page.locator('dialog button[type="submit"]').click()
+  const t = await texts()
+  expect(t[0]).toBe('利息　３７４７９円')
+  expect(t).toContain('日数　１年９１日（通算４５６日）')
+})
+
+test('Alt+B 物件情報入力: 土地の物件目録', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.press('Alt+b')
+  await page.getByTestId('okaguchi-prop-land-location').fill('東京都港区虎ノ門一丁目')
+  await page.getByTestId('okaguchi-prop-land-lot').fill('1番1')
+  await page.getByTestId('okaguchi-prop-land-area').fill('123.45')
+  await page.locator('dialog button[type="submit"]').click()
+  expect(await texts()).toEqual([
+    '所在　　東京都港区虎ノ門一丁目',
+    '地番　　１番１',
+    '地積　　１２３．４５㎡'
+  ])
+})
+
+test('Alt+J 連番等事後設定: 手で打った符号を連番ランクにする', async () => {
+  await typeLines(['第１　請求の趣旨', '1 被告は、原告に対し、', '(1)主位的請求', '原告は、', '２　訴訟費用は'])
+  await page.keyboard.press('Alt+j')
+  await page.locator('dialog button[type="submit"]').click()
+  const ps = await paragraphs()
+  expect(ps.map((p) => [p.marker, p.text])).toEqual([
+    ['第１', '　請求の趣旨'],
+    ['１', '　被告は、原告に対し、'],
+    ['⑴', '　主位的請求'],
+    ['', '原告は、'],
+    ['２', '　訴訟費用は']
+  ])
+})
+
+test('Alt+P 書式変更: A4・37 字 × 26 行・12pt、フッターにページ番号', async () => {
+  await page.click('.wowd-content p')
+  await page.keyboard.press('Alt+p')
+  await page.locator('dialog button[type="submit"]').click()
+  await expect(page.getByTestId('notice')).toContainText('書式変更が完了しました')
+  const result = await page.evaluate(() => {
+    const w = window as unknown as {
+      __wowdStore: {
+        getState: () => {
+          document: {
+            resources: {
+              sections: { pgMar: { left: number; top: number }; docGrid: { type: string } | null; footerRefs: { default?: string } }[]
+              footers: Map<string, unknown>
+            }
+          }
+        }
+      }
+    }
+    const r = w.__wowdStore.getState().document.resources
+    const s = r.sections[0]!
+    return { left: s.pgMar.left, top: s.pgMar.top, grid: s.docGrid?.type, footer: JSON.stringify(r.footers.get(s.footerRefs.default ?? '')) }
+  })
+  expect(result.left).toBe(1701)
+  expect(result.top).toBe(1984)
+  expect(result.grid).toBe('linesAndChars')
+  expect(result.footer).toContain('PAGE')
+})
+
+test('リボンの「岡口マクロ」タブからも使える', async () => {
+  await typeLines(['見出し'])
+  await page.getByTestId('ribbon-tab-okaguchi').click()
+  await page.getByRole('button', { name: /ランク3 \(Alt\+3\)/ }).click()
+  expect((await paragraphs())[0]).toMatchObject({ marker: '⑴', text: '　見出し' })
+  await page.getByRole('button', { name: /日付入力/ }).click()
+  await expect(page.locator('dialog')).toHaveCount(1)
+  await page.keyboard.press('Escape')
+  await page.getByTestId('ribbon-tab-home').click()
+})
