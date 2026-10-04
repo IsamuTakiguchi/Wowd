@@ -5,6 +5,7 @@ import { DateDialog } from './dialogs/DateDialog'
 import { WideCharDialog } from './dialogs/WideCharDialog'
 import { PartyDialog } from './dialogs/PartyDialog'
 import { InterestDialog } from './dialogs/InterestDialog'
+import { PropertyDialog } from './dialogs/PropertyDialog'
 
 /**
  * 岡口マクロの入力画面をまとめて出す。開いているのは常に 1 つ。
@@ -31,6 +32,8 @@ export function OkaguchiDialogs({ editor }: { editor: Editor | null }): React.JS
       return <PartyDialog kind="corp" editor={editor} onClose={close} />
     case 'okaguchiInterest':
       return <InterestDialog editor={editor} onClose={close} />
+    case 'okaguchiProperty':
+      return <PropertyDialog editor={editor} onClose={close} />
     default:
       return null
   }

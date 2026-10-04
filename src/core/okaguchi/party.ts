@@ -27,6 +27,8 @@ export interface PartyLine {
   /** 左の字下げ (字数)。半端 (9.5 字など) もある */
   indent: number
   runs: PartyRun[]
+  /** 段落の配置。既定は左 (両端) */
+  align?: 'center'
 }
 
 /** 氏名の書き出し位置 (左から何字目か) */
@@ -34,7 +36,7 @@ export const NAME_COLUMN = 23
 /** 郵便番号と住所の合計がこれを超えたら、2 段目に分けるよう勧める */
 export const ADDRESS_LIMIT = 35
 
-const SPACE = '　'
+const SPACE = '\u3000'
 
 // ---- 郵便番号 ----
 

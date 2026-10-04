@@ -85,6 +85,7 @@ export function insertLines(editor: Editor, lines: PartyLine[], pitchTwip: numbe
   const content = lines.map((line) => ({
     type: 'paragraph',
     attrs: {
+      ...(line.align === 'center' ? { jc: 'center' } : {}),
       ind: {
         leftChars: Math.round(line.indent * 100),
         left: Math.round(line.indent * pitchTwip),

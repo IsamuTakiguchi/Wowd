@@ -1912,3 +1912,53 @@ body {
   max-height: 220px;
   overflow: auto;
 }
+
+.okaguchi-prop-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.okaguchi-prop-input input {
+  flex: 1;
+}
+
+.okaguchi-prop-floors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+.okaguchi-prop-floor {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.okaguchi-prop-floor input {
+  width: 4em;
+  min-width: 0;
+  flex: 1;
+}
+
+.okaguchi-prop-floor input:first-child {
+  flex: 0 0 3em;
+}
+
+.wowd-dialog-grid > .okaguchi-prop-section {
+  font-weight: 600;
+  color: var(--text);
+  padding-top: 6px;
+}
+
+.okaguchi-prop-options {
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+@media (max-width: 720px) {
+  .okaguchi-prop-floors {
+    grid-template-columns: 1fr;
+  }
+}
