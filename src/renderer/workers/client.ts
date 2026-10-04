@@ -58,6 +58,7 @@ class DocxClient {
       commentsChanged: boolean
       headersChanged: boolean
       tocChanged: boolean
+      stylesChanged?: boolean
     }
   ): Promise<Uint8Array> {
     const res = await this.send({ kind: 'save', document, sourceBytes, ...options })

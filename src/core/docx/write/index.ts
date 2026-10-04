@@ -13,6 +13,7 @@ import {
 import { XML_DECL, wrap } from '../xml'
 import { writeBody } from './body'
 import { writeNumbering } from './numbering'
+import { writeStyles } from './styles'
 import { writeComments, writeCommentsExtended } from './comments'
 import { ensureIgnorable } from './rootAttrs'
 import {
@@ -55,6 +56,8 @@ export function writeDocumentXml(doc: WowdDocument, originalXml: string | null):
 export interface WriteOptions {
   /** numbering.xml も書き直すか。リストを編集したときだけ true にする */
   numberingChanged?: boolean
+  /** styles.xml も書き直すか。スタイルを足したり置き換えたりしたときだけ true にする */
+  stylesChanged?: boolean
   /** comments.xml も書き直すか。コメントを編集したときだけ true にする */
   commentsChanged?: boolean
   /** ヘッダー / フッターのパートも書き直すか */
@@ -87,15 +90,23 @@ export function writeDocx(
   overrides.set(doc.resources.documentPartName, writeDocumentXml(doc, originalXml))
 
   if (options.numberingChanged) {
-    const numberingPart = findNumberingPart(pkg)
-    if (numberingPart) {
-      // 原本のルート属性を引き継ぐ。落とすと、原文のまま書き戻した
-      // w15:tentative などの接頭辞が未宣言になり、Word が開けなくなる
-      overrides.set(
-        numberingPart,
-        writeNumbering(doc.resources.numbering, decodePart(pkg, numberingPart))
-      )
-    }
+    // 原本のルート属性を引き継ぐ。落とすと、原文のまま書き戻した
+    // w15:tentative などの接頭辞が未宣言になり、Word が開けなくなる
+    writeDocumentPart(doc, pkg, overrides, {
+      fileName: 'numbering.xml',
+      relType: REL_TYPE.numbering,
+      contentType: NUMBERING_CONTENT_TYPE,
+      build: (original) => writeNumbering(doc.resources.numbering, original)
+    })
+  }
+
+  if (options.stylesChanged) {
+    writeDocumentPart(doc, pkg, overrides, {
+      fileName: 'styles.xml',
+      relType: REL_TYPE.styles,
+      contentType: STYLES_CONTENT_TYPE,
+      build: (original) => writeStyles(doc.resources.styles, original)
+    })
   }
 
   if (options.commentsChanged) {
@@ -127,6 +138,76 @@ export function writeDocx(
   return savePackage(pkg, { overrides })
 }
 
+const NUMBERING_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml'
+const STYLES_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml'
+
+/**
+ * 本文から関係で参照される 1 枚もののパート (numbering.xml / styles.xml) を書く。
+ *
+ * 原本にあれば上書きし、無ければパート・関係・コンテンツタイプをまとめて作る。
+ * 番号やスタイルを持たない .docx (他のソフトが作ったもの) に連番を振ったとき、
+ * パートを作らないと保存した時点で番号が消える。
+ */
+function writeDocumentPart(
+  doc: WowdDocument,
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>,
+  spec: {
+    fileName: string
+    relType: string
+    contentType: string
+    build: (originalXml: string | null) => string
+  }
+): void {
+  const existing = findPart(pkg, spec.fileName)
+  if (existing) {
+    overrides.set(existing, spec.build(decodePart(pkg, existing)))
+    return
+  }
+
+  const partName = `word/${spec.fileName}`
+  overrides.set(partName, spec.build(null))
+
+  const relsPart = relsPartNameFor(doc.resources.documentPartName)
+  const relsXml = latestPart(pkg, overrides, relsPart)
+  if (relsXml) {
+    overrides.set(relsPart, ensureRelationship(relsXml, freeRelId(relsXml, doc), spec.relType, spec.fileName))
+  }
+  const contentTypes = latestPart(pkg, overrides, '[Content_Types].xml')
+  if (contentTypes) {
+    overrides.set(
+      '[Content_Types].xml',
+      ensureOverrideContentType(contentTypes, partName, spec.contentType)
+    )
+  }
+}
+
+/**
+ * いま書こうとしている版のパート。先に別の処理が書き換えていればそちらを返す。
+ *
+ * 関係 (.rels) とコンテンツタイプは、画像・コメント・番号など複数の処理が
+ * それぞれ足しにくる。原本から読み直すと、前の処理が足した分を上書きで消してしまう。
+ */
+function latestPart(
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>,
+  name: string
+): string | null {
+  const pending = overrides.get(name)
+  if (typeof pending === 'string') return pending
+  if (pending instanceof Uint8Array) return new TextDecoder().decode(pending)
+  return decodePart(pkg, name)
+}
+
+/** .rels と文書の関係表のどちらとも重ならない rId */
+function freeRelId(relsXml: string, doc: WowdDocument): string {
+  let max = doc.resources.rels.nextId - 1
+  for (const m of relsXml.matchAll(/\bId="rId(\d+)"/g)) max = Math.max(max, Number(m[1]))
+  return `rId${max + 1}`
+}
+
 /**
  * 元パッケージに無いヘッダー / フッターのパートに、関係とコンテンツタイプを足す。
  *
@@ -139,8 +220,8 @@ function ensureHeaderFooterParts(
   overrides: Map<string, Uint8Array | string | null>
 ): void {
   const relsPart = relsPartNameFor(doc.resources.documentPartName)
-  let relsXml = decodePart(pkg, relsPart)
-  let contentTypes = decodePart(pkg, '[Content_Types].xml')
+  let relsXml = latestPart(pkg, overrides, relsPart)
+  let contentTypes = latestPart(pkg, overrides, '[Content_Types].xml')
   let changed = false
 
   for (const rel of doc.resources.rels.byId.values()) {
@@ -191,8 +272,8 @@ function writeNewMedia(
   if (added.length === 0) return
 
   const relsPart = relsPartNameFor(doc.resources.documentPartName)
-  let relsXml = decodePart(pkg, relsPart)
-  let contentTypes = decodePart(pkg, '[Content_Types].xml')
+  let relsXml = latestPart(pkg, overrides, relsPart)
+  let contentTypes = latestPart(pkg, overrides, '[Content_Types].xml')
 
   for (const { key, entry } of added) {
     overrides.set(key, entry.bytes)
@@ -244,14 +325,14 @@ function writeExtendedComments(
 
   // 新規に作る場合は関係とコンテンツタイプも足す
   const relsPart = relsPartNameFor(doc.resources.documentPartName)
-  const relsXml = decodePart(pkg, relsPart)
+  const relsXml = latestPart(pkg, overrides, relsPart)
   if (relsXml) {
-    const id = `rId${doc.resources.rels.nextId}`
+    const id = freeRelId(relsXml, doc)
     const target = partName.replace(/^word\//, '')
     overrides.set(relsPart, ensureRelationship(relsXml, id, EXTENDED_REL_TYPE, target))
   }
 
-  const contentTypes = decodePart(pkg, '[Content_Types].xml')
+  const contentTypes = latestPart(pkg, overrides, '[Content_Types].xml')
   if (contentTypes) {
     overrides.set(
       '[Content_Types].xml',
@@ -263,10 +344,6 @@ function writeExtendedComments(
 function decodePart(pkg: DocxPackage, name: string): string | null {
   const bytes = pkg.parts.get(name)
   return bytes ? new TextDecoder().decode(bytes) : null
-}
-
-function findNumberingPart(pkg: DocxPackage): string | null {
-  return findPart(pkg, 'numbering.xml')
 }
 
 function findPart(pkg: DocxPackage, fileName: string): string | null {

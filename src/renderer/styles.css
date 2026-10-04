@@ -367,7 +367,8 @@ body {
 }
 
 /* リストの行頭記号。文書本体ではなく Decoration として重ねている */
-.wowd-list-marker {
+.wowd-list-marker,
+.wowd-list-marker-wrap {
   white-space: pre;
   user-select: none;
 }

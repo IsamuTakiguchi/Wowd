@@ -37,7 +37,8 @@ function readLevel(lvl: XNode): NumberingLevel {
     pPr: parsedPPr,
     rPr: parsedRPr ? parsedRPr.props : null,
     rFonts: parsedRPr?.props.rFonts ?? null,
-    isLgl: boolVal(findChild(lvl, 'w:isLgl'))
+    isLgl: boolVal(findChild(lvl, 'w:isLgl')),
+    pStyle: valOf(findChild(lvl, 'w:pStyle')) ?? null
   }
 }
 

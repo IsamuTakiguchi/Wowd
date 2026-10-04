@@ -45,6 +45,7 @@ function readStyle(node: XNode): StyleDef | null {
     quickFormat: findChild(node, 'w:qFormat') !== undefined,
     uiPriority: intVal(findChild(node, 'w:uiPriority'), 99) ?? 99,
     semiHidden: boolVal(findChild(node, 'w:semiHidden')),
+    custom: attr(node, 'w:customStyle') === '1' || attr(node, 'w:customStyle') === 'true',
     pPr: pPrNode ? readParagraphProps(pPrNode).attrs : null,
     rPr: rPrNode ? readRunProps(rPrNode).props : null,
     rawXml: buildXml([node])

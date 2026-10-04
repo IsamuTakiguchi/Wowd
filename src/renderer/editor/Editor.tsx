@@ -314,6 +314,16 @@ export function WowdEditor({
     [resources, section, geometry, viewMode, mobile]
   )
 
+  // 段落スタイル経由の番号 (見出しに結び付けた番号) を数えるために styles.xml を渡す。
+  // スタイルを書き換えたとき (岡口マクロの連番ランク設定など) も渡し直す
+  const stylesForNumbering = resources?.styles ?? null
+  useEffect(() => {
+    if (!editor) return
+    ;(editor.commands as unknown as { setNumberingStyles: (s: unknown) => void }).setNumberingStyles(
+      stylesForNumbering
+    )
+  }, [editor, stylesForNumbering])
+
   // styles.xml 由来の見た目。文書を読み込んだときだけ作り直す
   const styleSheet = useMemo(
     () => (resources ? buildStyleSheet(resources.styles) : ''),

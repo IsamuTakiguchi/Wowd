@@ -30,6 +30,7 @@ export interface SaveRequest {
   commentsChanged: boolean
   headersChanged: boolean
   tocChanged: boolean
+  stylesChanged?: boolean
 }
 
 export type WorkerRequest = OpenRequest | SaveRequest
@@ -62,7 +63,8 @@ function handle(req: WorkerRequest): WorkerResponse {
     numberingChanged: req.numberingChanged,
     commentsChanged: req.commentsChanged,
     headersChanged: req.headersChanged,
-    tocChanged: req.tocChanged
+    tocChanged: req.tocChanged,
+    stylesChanged: req.stylesChanged === true
   })
   return { kind: 'save', id: req.id, ok: true, bytes }
 }

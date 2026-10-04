@@ -23,6 +23,7 @@ import type {
   NumberingTable
 } from '../model/types'
 import { computeListMarkers, type ListMarker } from '../numbering/markers'
+import { markerCss } from '../numbering/markerCss'
 import { paragraphAttrsToStyle } from './paragraphCss'
 import { runPropsToStyle, DEFAULT_RUN_PROPS, fontsToCss } from './runCss'
 import { buildStyleSheet } from './styleSheet'
@@ -100,7 +101,12 @@ export function buildPrintHtml(input: PrintInput): string {
   const bodyFont = fontsToCss(defaultRun?.rFonts ?? null)
   const bodySize = defaultRun?.sz != null ? `${halfPtToPt(defaultRun.sz)}pt` : null
 
-  const body = pages.map((page) => renderPage(page, input, total)).join('\n')
+  const bodyMarkers = listMarkersFor(
+    pages.flatMap((page) => page.blocks),
+    input.numbering ?? null,
+    styles
+  )
+  const body = pages.map((page) => renderPage(page, input, total, bodyMarkers)).join('\n')
 
   return `<!doctype html>
 <html lang="ja">
@@ -128,7 +134,7 @@ ${bodySize ? `  font-size: ${bodySize};` : ''}
   break-after: page;
   background: #fff;
 }
-.wowd-list-marker { white-space: pre; }
+.wowd-list-marker, .wowd-list-marker-wrap { white-space: pre; }
 ${trimCss}
 .wowd-print-page:last-child { break-after: auto; }
 .wowd-print-body p, .wowd-print-body h1, .wowd-print-body h2, .wowd-print-body h3,
@@ -147,7 +153,12 @@ ${body}
 </html>`
 }
 
-function renderPage(page: PrintPage, input: PrintInput, total: number): string {
+function renderPage(
+  page: PrintPage,
+  input: PrintInput,
+  total: number,
+  bodyMarkers: Map<BlockNode, ListMarker>
+): string {
   const { section } = page
   const marginStart = section.pgMar.left + section.pgMar.gutter
   const contentWidth = section.pgSz.w - marginStart - section.pgMar.right
@@ -166,20 +177,26 @@ function renderPage(page: PrintPage, input: PrintInput, total: number): string {
     evenAndOdd
   )
 
-  const fieldContext = {
+  const fieldContext: FieldContext = {
     pageNumber: page.displayNumber,
     pageCount: total,
-    pageNumberFormat: section.pgNumType?.fmt ?? 'decimal'
+    pageNumberFormat: section.pgNumType?.fmt ?? 'decimal',
+    markers: bodyMarkers
   }
+  // ヘッダー・フッターの番号は本文とは別に数える
+  const ownMarkers = (doc: WowdDoc): FieldContext => ({
+    ...fieldContext,
+    markers: listMarkersFor(doc.content, input.numbering ?? null, input.styles)
+  })
 
   const header = headerId ? input.headers.get(headerId) : undefined
   const footer = footerId ? input.footers.get(footerId) : undefined
 
   const headerHtml = header
-    ? `<div class="wowd-print-hf" style="position:absolute;top:${pt(section.pgMar.header)};left:${pt(marginStart)};width:${pt(contentWidth)}">${renderBlocks(header.content, input, fieldContext)}</div>`
+    ? `<div class="wowd-print-hf" style="position:absolute;top:${pt(section.pgMar.header)};left:${pt(marginStart)};width:${pt(contentWidth)}">${renderBlocks(header.content, input, ownMarkers(header))}</div>`
     : ''
   const footerHtml = footer
-    ? `<div class="wowd-print-hf" style="position:absolute;bottom:${pt(section.pgMar.footer)};left:${pt(marginStart)};width:${pt(contentWidth)}">${renderBlocks(footer.content, input, fieldContext)}</div>`
+    ? `<div class="wowd-print-hf" style="position:absolute;bottom:${pt(section.pgMar.footer)};left:${pt(marginStart)};width:${pt(contentWidth)}">${renderBlocks(footer.content, input, ownMarkers(footer))}</div>`
     : ''
 
   const bodyStyle = [
@@ -236,15 +253,46 @@ interface FieldContext {
   pageNumber: number
   pageCount: number
   pageNumberFormat: string
+  /** 段落 → 行頭記号。本文は文書全体で、ヘッダー・フッターはそれぞれで数える */
+  markers: Map<BlockNode, ListMarker>
+}
+
+/**
+ * 行頭記号を一括で求める。画面と同じ計算を使う。別々に実装すると番号が食い違う。
+ *
+ * 本文はページをまたいで 1 回で数える。ページごとに数えると、
+ * ページが変わるたびに番号が 1 に戻る。表の中の段落も文書順に数える。
+ */
+export function listMarkersFor(
+  blocks: BlockNode[],
+  numbering: NumberingTable | null,
+  styles: StyleTable | null
+): Map<BlockNode, ListMarker> {
+  const paragraphs: Extract<BlockNode, { type: 'paragraph' }>[] = []
+  const walk = (list: BlockNode[]): void => {
+    for (const block of list) {
+      if (block.type === 'paragraph') paragraphs.push(block)
+      else if (block.type === 'table') {
+        for (const row of block.content) for (const cell of row.content) walk(cell.content)
+      }
+    }
+  }
+  walk(blocks)
+  const byIndex = computeListMarkers(
+    paragraphs.map((p) => ({ numPr: p.attrs.numPr, pStyle: p.attrs.pStyle })),
+    numbering,
+    styles
+  )
+  const out = new Map<BlockNode, ListMarker>()
+  for (const [i, marker] of byIndex) {
+    const paragraph = paragraphs[i]
+    if (paragraph) out.set(paragraph, marker)
+  }
+  return out
 }
 
 function renderBlocks(blocks: BlockNode[], input: PrintInput, ctx: FieldContext): string {
-  // 行頭記号は画面と同じ計算を使う。別々に実装すると番号が食い違う
-  const markers = computeListMarkers(
-    blocks.map((b) => ({ numPr: b.type === 'paragraph' ? b.attrs.numPr : null })),
-    input.numbering ?? null
-  )
-  return blocks.map((block, i) => renderBlock(block, input, ctx, markers.get(i))).join('')
+  return blocks.map((block) => renderBlock(block, input, ctx, ctx.markers.get(block))).join('')
 }
 
 function renderBlock(
@@ -263,9 +311,7 @@ function renderBlock(
         style ? ` style="${escapeAttr(style)}"` : '',
         block.attrs.pStyle ? ` data-style="${escapeAttr(block.attrs.pStyle)}"` : ''
       ].join('')
-      const markerHtml = marker
-        ? `<span class="wowd-list-marker"${markerStyle(marker)}>${escapeXml(marker.text + marker.suffix)}</span>`
-        : ''
+      const markerHtml = marker ? renderMarker(marker) : ''
       const inner = (block.content ?? []).map((n) => renderInline(n, input, ctx)).join('')
       // 空段落でも高さを持たせる
       return `<${tag}${attrs}>${markerHtml}${inner || (markerHtml ? '' : '<br>')}</${tag}>`
@@ -380,17 +426,17 @@ function inlineStyleOf(marks: Mark[] | undefined): string {
  * 行頭記号の位置。ぶら下げインデントのぶんだけ左へ出す。
  * 画面側の markerStyle と同じ考え方。
  */
-function markerStyle(marker: ListMarker): string {
-  const ind = marker.level.pPr?.ind ?? null
-  if (!ind) return ''
-  const hanging =
-    ind.hangingChars != null
-      ? `${ind.hangingChars / 100}em`
-      : ind.hanging != null
-        ? `${round(twipToPt(ind.hanging))}pt`
-        : null
-  if (!hanging) return ''
-  return ` style="display:inline-block;width:${hanging};margin-inline-start:-${hanging}"`
+/** 行頭記号。置き方は画面と同じ規則 (markerCss) で決める */
+function renderMarker(marker: ListMarker): string {
+  const css = markerCss(marker.level)
+  const text = css.suffixOutside ? marker.text : marker.text + marker.suffix
+  const glyph = css.glyph
+    ? `<span style="${escapeAttr(css.glyph)}">${escapeXml(text)}</span>`
+    : escapeXml(text)
+  const box = `<span class="wowd-list-marker"${css.box ? ` style="${escapeAttr(css.box)}"` : ''}>${glyph}</span>`
+  return css.suffixOutside && marker.suffix
+    ? `<span class="wowd-list-marker-wrap">${box}${escapeXml(marker.suffix)}</span>`
+    : box
 }
 
 /** 見出しスタイルは見出しタグで出す。スタイル CSS が data-style で当たる */

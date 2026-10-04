@@ -439,6 +439,8 @@ export interface StyleDef {
   quickFormat: boolean
   uiPriority: number
   semiHidden: boolean
+  /** w:customStyle — 利用者 (や Wowd) が作ったスタイル。組み込みスタイルと区別する */
+  custom?: boolean
   pPr: Partial<ParagraphAttrs> | null
   rPr: RunProps | null
   /** スタイル定義まるごとの XML。書き戻しは基本これを使う */
@@ -469,6 +471,14 @@ export interface NumberingLevel {
   /** 箇条書き記号を描くフォント */
   rFonts: RunFonts | null
   isLgl: boolean
+  /**
+   * w:pStyle — このレベルに結び付いた段落スタイル。
+   *
+   * Word では、見出しスタイルに番号を結び付けると、レベル側にスタイル名が、
+   * スタイル側に numPr が入る。スタイル側の numPr に ilvl が無いときは、
+   * ここでスタイル名が一致するレベルが使われる。
+   */
+  pStyle?: string | null
 }
 
 export interface AbstractNum {

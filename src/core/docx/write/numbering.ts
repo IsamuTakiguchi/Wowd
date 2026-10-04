@@ -1,4 +1,4 @@
-import type { NumberingTable, NumberingLevel } from '../../model/types'
+import type { NumberingTable, NumberingLevel, NumInstance } from '../../model/types'
 import { el, wrap, valEl, XML_DECL } from '../xml'
 import { LVL_ORDER, emitOrdered, type OrderedFragment } from './order'
 import {
@@ -26,6 +26,7 @@ export function writeLevel(level: NumberingLevel): string {
   add('w:start', valEl('w:start', level.start))
   add('w:numFmt', valEl('w:numFmt', level.numFmt))
   if (level.lvlRestart != null) add('w:lvlRestart', valEl('w:lvlRestart', level.lvlRestart))
+  if (level.pStyle) add('w:pStyle', valEl('w:pStyle', level.pStyle))
   if (level.isLgl) add('w:isLgl', el('w:isLgl'))
   if (level.suff !== 'tab') add('w:suff', valEl('w:suff', level.suff))
   add('w:lvlText', valEl('w:lvlText', level.lvlText))
@@ -58,11 +59,7 @@ export function writeNumbering(table: NumberingTable, originalXml: string | null
 
   const nums = [...table.instances.values()]
     .sort((a, b) => a.numId - b.numId)
-    .map(
-      (n) =>
-        n.rawXml ||
-        wrap('w:num', { 'w:numId': n.numId }, valEl('w:abstractNumId', n.abstractNumId))
-    )
+    .map((n) => n.rawXml || writeNum(n))
     .join('')
 
   return (
@@ -72,6 +69,26 @@ export function writeNumbering(table: NumberingTable, originalXml: string | null
       rootAttrsOf(originalXml, 'w:numbering', NUMBERING_NS)
     )
   )
+}
+
+/**
+ * w:num を書く。上書き (w:lvlOverride) があればそれも。
+ *
+ * 番号を 1 から振り直す (打直し) ときは、同じ定義を指す新しい num に
+ * startOverride を付けて作る。これを書き落とすと、振り直したはずの番号が
+ * Word で開くと続き番号に戻る。
+ */
+export function writeNum(n: NumInstance): string {
+  const overrides = [...n.overrides.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([ilvl, o]) => {
+      const inner =
+        (o.startOverride != null ? valEl('w:startOverride', o.startOverride) : '') +
+        (o.level ? writeLevel(o.level) : '')
+      return wrap('w:lvlOverride', { 'w:ilvl': ilvl }, inner)
+    })
+    .join('')
+  return wrap('w:num', { 'w:numId': n.numId }, valEl('w:abstractNumId', n.abstractNumId) + overrides)
 }
 
 export function writeAbstractNum(abstractNumId: number, levels: NumberingLevel[]): string {

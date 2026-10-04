@@ -156,7 +156,8 @@ async function flushParked(id: string): Promise<void> {
       numberingChanged: data.numberingChanged,
       commentsChanged: data.commentsChanged,
       headersChanged: data.headersChanged,
-      tocChanged: data.tocChanged
+      tocChanged: data.tocChanged,
+      stylesChanged: data.stylesChanged
     })
     await platform.writeFile(data.filePath, bytes)
     // 書いているあいだにそのタブが表に戻っていたら、預かり物はもう無い。
@@ -167,6 +168,7 @@ async function flushParked(id: string): Promise<void> {
       commentsChanged: false,
       headersChanged: false,
       tocChanged: false,
+      stylesChanged: false,
       sourceBytes: bytes
     })
   } catch {

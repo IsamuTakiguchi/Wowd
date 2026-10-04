@@ -59,7 +59,8 @@ export async function saveRecoveryNow(): Promise<boolean> {
         numberingChanged: data.numberingChanged,
         commentsChanged: data.commentsChanged,
         headersChanged: data.headersChanged,
-        tocChanged: data.tocChanged
+        tocChanged: data.tocChanged,
+        stylesChanged: data.stylesChanged
       })
       const name = data.filePath
         ? (data.filePath.split(/[\\/]/).pop() ?? data.filePath)
