@@ -151,6 +151,15 @@ export function registerFileIpc(): void {
     return res.response === 0
   })
 
+  // 操作の種類だけを受け、送ってきた画面そのものに対して行う。ほかの窓には触らない
+  ipcMain.handle(IPC.clipboard, (e, action: unknown): boolean => {
+    if (action === 'cut') e.sender.cut()
+    else if (action === 'copy') e.sender.copy()
+    else if (action === 'paste') e.sender.paste()
+    else return false
+    return true
+  })
+
   ipcMain.handle(IPC.reportError, async (_e, title: string, message: string): Promise<void> => {
     const win = BrowserWindow.getFocusedWindow()
     const opts = { type: 'error' as const, message: title, detail: message, buttons: ['OK'] }

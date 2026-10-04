@@ -22,6 +22,7 @@ export const IPC = {
   listRecovery: 'wowd:recovery:list',
   readRecovery: 'wowd:recovery:read',
   clearRecovery: 'wowd:recovery:clear',
+  clipboard: 'wowd:edit:clipboard',
   // main → renderer (push)
   menuCommand: 'wowd:menu:command',
   openFileRequest: 'wowd:file:openRequest',
@@ -84,6 +85,8 @@ export interface RecoveryEntry {
   name: string
   savedAt: number
 }
+
+export type ClipboardAction = 'cut' | 'copy' | 'paste'
 
 export interface AppInfo {
   version: string
@@ -163,6 +166,15 @@ export interface WowdApi {
   /** 未保存の変更を破棄してよいか確認する。true = 破棄してよい */
   confirmDiscard(name: string): Promise<boolean>
   reportError(title: string, message: string): Promise<void>
+  /**
+   * 切り取り・コピー・貼り付けをボタンや右クリックから行う。
+   *
+   * ボタンからは、キーを押したときのような「貼り付け」の事件をページが起こせない
+   * (ブラウザが許さない)。アプリ版は main が自分の画面に対して同じ操作を行う。
+   * 扱うのは操作の種類だけで、クリップボードの中身は渡さない。
+   * できなかったら false (ブラウザ版の貼り付けなど)。
+   */
+  clipboardAction(action: ClipboardAction): Promise<boolean>
   printToPdf(request: PrintRequest): Promise<PrintResult>
 
   onMenuCommand(cb: (cmd: MenuCommand) => void): () => void

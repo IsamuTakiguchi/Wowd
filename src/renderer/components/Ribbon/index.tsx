@@ -5,11 +5,13 @@ import { AutoSaveToggle } from '../AutoSaveToggle'
 import { QuickAccess } from '../QuickAccess'
 import { InsertTab, LayoutTab, ViewTab, ReferencesTab, ReviewTab } from './OtherTabs'
 import { OkaguchiTab } from './OkaguchiTab'
+import { FileTab } from './FileTab'
 import { useUiStore, type RibbonTab } from '../../store/ui'
 import { useDocumentStore } from '../../store/document'
 import { t } from '../../i18n/ja'
 
 const TABS: { id: RibbonTab; label: string }[] = [
+  { id: 'file', label: 'ファイル' },
   { id: 'home', label: t.ribbon.tabs.home },
   { id: 'insert', label: t.ribbon.tabs.insert },
   { id: 'layout', label: t.ribbon.tabs.layout },
@@ -53,6 +55,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
         ))}
       </nav>
       <div className="ribbon-panel" role="tabpanel">
+        {tab === 'file' && <FileTab editor={editor} />}
         {tab === 'home' && <HomeTab editor={editor} />}
         {tab === 'insert' && <InsertTab editor={editor} />}
         {tab === 'layout' && <LayoutTab />}

@@ -5,6 +5,7 @@ import type {
   RecentEntry,
   RecoveryEntry,
   AppInfo,
+  ClipboardAction,
   TemplateId,
   PrintRequest,
   PrintResult,
@@ -366,6 +367,19 @@ export const webPlatform: WowdApi = {
 
   async reportError(title: string, message: string): Promise<void> {
     window.alert(`${title}\n\n${message}`)
+  },
+
+  /**
+   * 切り取りとコピーは、押した直後なら document.execCommand で行える。
+   * 貼り付けはブラウザが許さないので false を返す (呼ぶ側が Ctrl+V を案内する)
+   */
+  async clipboardAction(action: ClipboardAction): Promise<boolean> {
+    if (action === 'paste') return false
+    try {
+      return document.execCommand(action)
+    } catch {
+      return false
+    }
   },
 
   /**

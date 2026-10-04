@@ -4,7 +4,8 @@ import {
   type WowdApi,
   type MenuCommand,
   type TemplateId,
-  type PrintRequest
+  type PrintRequest,
+  type ClipboardAction
 } from '../shared/ipc'
 
 /**
@@ -35,6 +36,7 @@ const api: WowdApi = {
   showItemInFolder: (path: string) => ipcRenderer.invoke(IPC.showItemInFolder, path),
   confirmDiscard: (name: string) => ipcRenderer.invoke(IPC.confirmDiscard, name),
   reportError: (title: string, message: string) => ipcRenderer.invoke(IPC.reportError, title, message),
+  clipboardAction: (action: ClipboardAction) => ipcRenderer.invoke(IPC.clipboard, action),
   printToPdf: (request: PrintRequest) => ipcRenderer.invoke(IPC.printToPdf, request),
 
   onMenuCommand(cb: (cmd: MenuCommand) => void) {

@@ -72,7 +72,10 @@ export async function buildMenu(): Promise<void> {
           click: () => send({ kind: 'file.printPdf' })
         },
         { type: 'separator' },
-        isMac ? { role: 'close', label: '閉じる' } : { role: 'quit', label: '終了' }
+        isMac
+          ? { role: 'close', label: '閉じる' }
+          : // Ctrl+Q は Word の「段落書式の解除」に使う。終了は Windows と同じ Alt+F4 にそろえる
+            { role: 'quit', label: '終了', accelerator: 'Alt+F4' }
       ]
     },
     {

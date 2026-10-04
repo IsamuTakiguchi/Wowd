@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'okaguchi'
+export type RibbonTab = 'file' | 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'okaguchi'
 
 /**
  * 表示モード。
@@ -17,6 +17,12 @@ export type DialogKind =
   | 'ruby'
   | 'pageSetup'
   | 'headerFooter'
+  // Word と同じ画面
+  | 'paragraph'
+  | 'link'
+  | 'goto'
+  | 'symbol'
+  | 'wordCount'
   // 岡口マクロの入力画面
   | 'okaguchiFormat'
   | 'okaguchiDate'
@@ -104,6 +110,15 @@ export interface UiState {
   /** 変更履歴の表示モード */
   revisionDisplay: RevisionDisplay
 
+  /**
+   * 書式のコピー / 貼り付け (ブラシ)。写した書式を持っている間は、
+   * 次に選んだ文字にその書式を当てる。sticky (ダブルクリックで始めた) なら Esc まで続く
+   */
+  formatPainter: { format: unknown; sticky: boolean } | null
+  setFormatPainter: (painter: { format: unknown; sticky: boolean } | null) => void
+  /** ナビゲーション ウィンドウ (見出しの一覧) を出す */
+  navigationOpen: boolean
+  toggleNavigation: (open?: boolean) => void
   /** 画面下に一時的に出す知らせ (「連番ランクを設定しました」など)。null は出さない */
   notice: string | null
   /** 知らせを出す。数秒で消える */
@@ -136,6 +151,7 @@ export const MAX_ZOOM = 300
 const DEFAULT_AUTHOR = '利用者'
 const AUTHOR_KEY = 'wowd.author'
 const RULER_KEY = 'wowd.showRuler'
+const NAV_KEY = 'wowd.navigationPane'
 const TRIM_KEY = 'wowd.showTrimMarks'
 const AUTOSAVE_KEY = 'wowd.autoSave'
 
@@ -206,6 +222,16 @@ export const useUiStore = create<UiState>((set) => ({
   author: loadAuthor(),
   revisionDisplay: 'all',
   notice: null,
+  formatPainter: null,
+  navigationOpen: loadFlag(NAV_KEY, false),
+
+  setFormatPainter: (formatPainter) => set({ formatPainter }),
+  toggleNavigation: (open) =>
+    set((s) => {
+      const navigationOpen = open ?? !s.navigationOpen
+      saveFlag(NAV_KEY, navigationOpen)
+      return { navigationOpen }
+    }),
 
   notify: (message) => {
     if (noticeTimer) clearTimeout(noticeTimer)

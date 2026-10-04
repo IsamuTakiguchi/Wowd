@@ -15,6 +15,7 @@ import { WTab } from './WTab'
 import { PageBreak, SectionBreak } from './PageBreak'
 import { Numbering } from './Numbering'
 import { RunScale } from './RunScale'
+import { NextStyle } from './NextStyle'
 import { Shortcuts } from './Shortcuts'
 import { TrackChanges } from '../track/TrackChanges'
 import { Ruby, Field, Bookmark, WBreak } from './InlineNodes'
@@ -78,6 +79,7 @@ export function buildExtensions(): (Extension | Node | Mark)[] {
 
     Numbering,
     RunScale,
+    NextStyle,
     // Tab は Numbering と WTab が先に処理するので、その後ろに置く
     Shortcuts,
     TrackChanges,

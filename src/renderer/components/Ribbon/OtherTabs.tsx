@@ -85,6 +85,30 @@ export function InsertTab({ editor }: { editor: Editor | null }): React.JSX.Elem
           />
         </RibbonRow>
       </RibbonGroup>
+      <RibbonGroup label="リンク">
+        <RibbonRow>
+          <RibbonButton
+            label="リンク"
+            title="ハイパーリンクを挿入・編集する (Ctrl+K)"
+            wide
+            disabled={!editor}
+            testId="ribbon-link"
+            onClick={() => openDialog('link')}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+      <RibbonGroup label="記号と特殊文字">
+        <RibbonRow>
+          <RibbonButton
+            label="Ω 記号"
+            title="※ 〒 ① ㈱ § などを挿入する"
+            wide
+            disabled={!editor}
+            testId="ribbon-symbol"
+            onClick={() => openDialog('symbol')}
+          />
+        </RibbonRow>
+      </RibbonGroup>
       <RibbonGroup label="ページ">
         <RibbonRow>
           <RibbonButton
@@ -287,6 +311,8 @@ export function ViewTab(): React.JSX.Element {
   const toggleRuler = useUiStore((s) => s.toggleRuler)
   const showTrimMarks = useUiStore((s) => s.showTrimMarks)
   const toggleTrimMarks = useUiStore((s) => s.toggleTrimMarks)
+  const navigationOpen = useUiStore((s) => s.navigationOpen)
+  const toggleNavigation = useUiStore((s) => s.toggleNavigation)
 
   const document_ = useDocumentStore((s) => s.document)
   const section = document_?.resources.sections[0] ?? null
@@ -328,6 +354,19 @@ export function ViewTab(): React.JSX.Element {
             active={showGrid}
             disabled={!hasGrid}
             onClick={() => toggleGrid()}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
+      <RibbonGroup label="表示">
+        <RibbonRow>
+          <RibbonButton
+            label="ナビゲーション ウィンドウ"
+            title="見出しの一覧を左に出す。押すとその見出しへ移る"
+            wide
+            active={navigationOpen}
+            testId="ribbon-navigation"
+            onClick={() => toggleNavigation()}
           />
         </RibbonRow>
       </RibbonGroup>

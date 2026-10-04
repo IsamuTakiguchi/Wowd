@@ -93,11 +93,18 @@ Word に合わせてある。
 
 | | |
 |---|---|
-| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | 新規 / 開く / 上書き保存 / 名前を付けて保存 |
+| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S (F12) | 新規 / 開く / 上書き保存 / 名前を付けて保存 |
 | Ctrl+P | PDF として保存 |
 | Ctrl+Z / Ctrl+Y | 元に戻す / やり直し |
 | Ctrl+A | すべて選択 |
-| Ctrl+F | 検索と置換 |
+| Ctrl+F / Ctrl+H | 検索 / 置換 |
+| Ctrl+G | ジャンプ (ページ・見出し) |
+| Ctrl+K | ハイパーリンク |
+| Ctrl+Shift+C / Ctrl+Shift+V | 書式のコピー / 貼り付け |
+| Ctrl+Shift+> / Ctrl+Shift+< | フォントサイズを一覧の次 / 前へ |
+| Ctrl+] / Ctrl+[ | フォントサイズを 1pt 大きく / 小さく |
+| Ctrl+Space / Ctrl+Q | 文字書式の解除 / 段落書式の解除 |
+| Ctrl+1 / Ctrl+5 / Ctrl+2 | 行間 1 行 / 1.5 行 / 2 行 |
 | Ctrl+B / Ctrl+I / Ctrl+U | 太字 / 斜体 / 下線 |
 | Ctrl+L / Ctrl+E / Ctrl+R / Ctrl+J | 左揃え / 中央揃え / 右揃え / 両端揃え |
 | Ctrl+M / Ctrl+Shift+M | インデントを増やす / 減らす |
@@ -107,6 +114,13 @@ Word に合わせてある。
 | Ctrl+Alt+N / Ctrl+Alt+P | 次の変更 / 前の変更 |
 | Ctrl+Alt+M | コメントの表示 |
 | Ctrl+マイナス / Ctrl+プラス / Ctrl+0 | 縮小 / 拡大 / 100% |
+| Ctrl+ホイール | 拡大縮小 |
+| Ctrl+Tab / Ctrl+PageDown など | タブ (文書) の切り替え (`docs/tabs-and-autosave.md`) |
+
+キー以外に Word に合わせたもの (ファイル タブ、クリップボード、段落ダイアログ、右クリックメニュー、
+ナビゲーション ウィンドウ、記号と特殊文字、文字カウント、次の段落のスタイル) は **`docs/word-ui.md`**。
+
+アプリ版の終了は Alt+F4 (Mac は ⌘Q)。Ctrl+Q は Word と同じく段落書式の解除に使う。
 
 Ctrl+A はネイティブメニューの役割 (`role: 'selectAll'`) ではなく本文のコマンドに
 回している。役割の方はブラウザ既定の全選択で、選択状態が ProseMirror へ

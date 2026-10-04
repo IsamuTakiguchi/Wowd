@@ -20,6 +20,11 @@ import { useLayoutSize } from './hooks/useIsMobile'
 import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
 import { TabBar } from './components/TabBar'
 import { handleOkaguchiKey } from './okaguchi/keys'
+import { handleWordKey } from './word/keys'
+import { startFormatPainterListener } from './word/actions'
+import { NavigationPane } from './word/NavigationPane'
+import { WordDialogs } from './word/WordDialogs'
+import { ContextMenu } from './word/ContextMenu'
 import { Notice } from './components/Notice'
 import { OkaguchiDialogs } from './okaguchi/OkaguchiDialogs'
 import { useTabsStore, nameFirstDocument } from './store/tabs'
@@ -44,6 +49,7 @@ export function App(): React.JSX.Element {
   }, [mobile, setViewMode])
   const overflowingTables = useUiStore((s) => s.overflowingTables)
   const dialog = useUiStore((s) => s.dialog)
+  const formatPainter = useUiStore((s) => s.formatPainter)
   const openDialog = useUiStore((s) => s.openDialog)
   const nudgeZoom = useUiStore((s) => s.nudgeZoom)
   const setTracking = useUiStore((s) => s.setTracking)
@@ -51,7 +57,11 @@ export function App(): React.JSX.Element {
   const toggleRuler = useUiStore((s) => s.toggleRuler)
   const toggleTrimMarks = useUiStore((s) => s.toggleTrimMarks)
 
-  const onReady = useCallback((next: Editor | null) => setEditor(next), [])
+  const onReady = useCallback((next: Editor | null) => {
+    setEditor(next)
+    // E2E から段落の属性や選択位置を確かめるための入口
+    ;(window as unknown as { __wowdEditor: unknown }).__wowdEditor = next
+  }, [])
 
   // 印刷はメニューからも E2E からも叩けるよう、現在の対象を登録しておく
   useEffect(() => {
@@ -75,6 +85,12 @@ export function App(): React.JSX.Element {
    */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // F12 は「名前を付けて保存」(Word と同じ)
+      if (e.key === 'F12' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        void useDocumentStore.getState().saveAs()
+        return
+      }
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return
       const tabs = useTabsStore.getState()
       if (!e.shiftKey && (e.key === 'PageDown' || e.key === 'PageUp')) {
@@ -98,6 +114,21 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
+
+  /**
+   * Word のキー (Ctrl+Shift+> でフォント拡大、Ctrl+Q で段落書式の解除など)。
+   * エディタより先に受ける。ProseMirror の既定 (Ctrl+[ など) より Word の動きを優先する
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      handleWordKey(e, editor)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [editor])
+
+  // 書式のコピー / 貼り付け (ブラシ)。待っている間に本文でマウスを離したら当てる
+  useEffect(() => startFormatPainterListener(() => editor), [editor])
 
   /**
    * 岡口マクロのキー (Alt+R, Alt+1〜8 など)。
@@ -228,7 +259,10 @@ export function App(): React.JSX.Element {
   return (
     // 画面の広さは CSS からも使う。判定を JS と CSS の 2 か所に書くと必ずずれるので、
     // 決めるのは useLayoutSize だけにして、結果を属性で渡す
-    <div className={mobile ? 'app is-mobile' : 'app'} data-size={size}>
+    <div
+      className={['app', mobile ? 'is-mobile' : '', formatPainter ? 'is-format-painter' : ''].filter(Boolean).join(' ')}
+      data-size={size}
+    >
       {mobile ? <MobileTopBar editor={editor} /> : <Ribbon editor={editor} />}
 
       <RecoveryBanner />
@@ -265,6 +299,7 @@ export function App(): React.JSX.Element {
       )}
 
       <main className="app-body">
+        {!mobile && <NavigationPane editor={editor} />}
         <WowdEditor onReady={onReady} />
         <FindReplace editor={editor} />
         <CommentsPane editor={editor} />
@@ -278,6 +313,8 @@ export function App(): React.JSX.Element {
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
       <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
       <OkaguchiDialogs editor={editor} />
+      <WordDialogs editor={editor} />
+      <ContextMenu editor={editor} />
 
       <Notice />
       <TabBar compact={mobile} />

@@ -126,7 +126,13 @@ export const WLink = Mark.create({
 
   addAttributes() {
     return {
-      href: carry<string | null>(null),
+      // 行き先は title に出すだけで、踏ませない (下の renderHTML を参照)
+      href: {
+        default: null as string | null,
+        parseHTML: () => null,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs['href'] ? { title: `${String(attrs['href'])} (リンク)` } : {}
+      },
       anchor: carry<string | null>(null),
       rId: carry<string | null>(null),
       tooltip: carry<string | null>(null)

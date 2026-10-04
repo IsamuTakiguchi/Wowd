@@ -25,7 +25,9 @@ export function RibbonButton({
   active = false,
   disabled = false,
   wide = false,
-  onClick
+  onClick,
+  onDoubleClick,
+  testId
 }: {
   label: ReactNode
   title: string
@@ -33,6 +35,8 @@ export function RibbonButton({
   disabled?: boolean
   wide?: boolean
   onClick: () => void
+  onDoubleClick?: () => void
+  testId?: string
 }): React.JSX.Element {
   return (
     <button
@@ -45,6 +49,8 @@ export function RibbonButton({
       // エディタからフォーカスを奪うと選択範囲が消えるので押下時に既定動作を止める
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      data-testid={testId}
     >
       {label}
     </button>

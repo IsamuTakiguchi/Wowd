@@ -10,7 +10,7 @@ import {
   REL_TYPE,
   type DocxPackage
 } from '../package'
-import { XML_DECL, wrap } from '../xml'
+import { XML_DECL, wrap, escapeXml } from '../xml'
 import { writeBody } from './body'
 import { writeNumbering } from './numbering'
 import { writeStyles } from './styles'
@@ -134,6 +134,7 @@ export function writeDocx(
   }
 
   writeNewMedia(doc, pkg, overrides)
+  writeNewHyperlinks(doc, pkg, overrides)
 
   return savePackage(pkg, { overrides })
 }
@@ -294,6 +295,32 @@ function writeNewMedia(
 
   if (relsXml) overrides.set(relsPart, relsXml)
   if (contentTypes) overrides.set('[Content_Types].xml', contentTypes)
+}
+
+/**
+ * 新しく挿入したハイパーリンクの関係を足す。
+ *
+ * 外部リンクの行き先は本文ではなく .rels に入る (TargetMode="External")。
+ * 本文の r:id だけ書いて関係を足さないと、Word は文書が壊れていると言う。
+ * 原本の .rels にすでにある Id は触らない。
+ */
+function writeNewHyperlinks(
+  doc: WowdDocument,
+  pkg: DocxPackage,
+  overrides: Map<string, Uint8Array | string | null>
+): void {
+  const relsPart = relsPartNameFor(doc.resources.documentPartName)
+  let relsXml = latestPart(pkg, overrides, relsPart)
+  if (!relsXml) return
+  let changed = false
+  for (const rel of doc.resources.rels.byId.values()) {
+    if (rel.type !== REL_TYPE.hyperlink || rel.targetMode !== 'External') continue
+    if (new RegExp(`\\bId="${rel.id}"`).test(relsXml)) continue
+    const entry = `<Relationship Id="${escapeXml(rel.id)}" Type="${REL_TYPE.hyperlink}" Target="${escapeXml(rel.target)}" TargetMode="External"/>`
+    relsXml = relsXml.replace('</Relationships>', `${entry}</Relationships>`)
+    changed = true
+  }
+  if (changed) overrides.set(relsPart, relsXml)
 }
 
 /** commentsExtended のパート名・関係・コンテンツタイプ */

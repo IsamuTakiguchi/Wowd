@@ -40,6 +40,7 @@ export function StatusBar({ editor }: { editor: Editor | null }): React.JSX.Elem
   const pageCount = useUiStore((s) => s.pageCount)
   const currentPage = useUiStore((s) => s.currentPage)
   const [zoomMenu, setZoomMenu] = useState(false)
+  const openDialog = useUiStore((s) => s.openDialog)
 
   // 選択が変わったら数え直す。エディタの取引のたびに描き直す
   const [, setTick] = useState(0)
@@ -78,9 +79,16 @@ export function StatusBar({ editor }: { editor: Editor | null }): React.JSX.Elem
         </span>
       )}
       <span className="statusbar-spacer" />
-      <span>
+      {/* 押すと文字カウント (Word と同じ) */}
+      <button
+        type="button"
+        className="statusbar-link"
+        title="文字カウントを表示する"
+        data-testid="status-chars"
+        onClick={() => openDialog('wordCount')}
+      >
         {t.status.chars}: {counts.withSpace.toLocaleString('ja-JP')}
-      </span>
+      </button>
       {/* 窓が狭いときは畳む。文字数だけ残せば用は足りる */}
       <span className="statusbar-optional">
         {t.status.charsNoSpace}: {counts.withoutSpace.toLocaleString('ja-JP')}

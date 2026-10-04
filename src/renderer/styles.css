@@ -2209,3 +2209,308 @@ body {
   border-radius: 50%;
   background: #d13438;
 }
+
+/* 書式のコピー (ブラシ) で貼り付け先を待っている間 */
+.app.is-format-painter .ProseMirror {
+  cursor: copy;
+}
+
+.ribbon-grow {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ribbon-grow.is-small {
+  font-size: 11px;
+}
+
+.ribbon-grow sup {
+  font-size: 7px;
+  margin-left: 1px;
+}
+
+/* ---- ファイル タブ ---------------------------------------------------- */
+
+.ribbon-note {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ribbon-recent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 160px));
+  gap: 2px 6px;
+  max-height: 62px;
+  overflow: auto;
+}
+
+.ribbon-recent-item {
+  border: none;
+  background: transparent;
+  text-align: start;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.ribbon-recent-item:hover {
+  background: var(--ribbon-hover);
+}
+
+.ribbon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  font-size: 12px;
+}
+
+.ribbon-info .ribbon-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ribbon-link {
+  border: none;
+  background: transparent;
+  color: var(--ribbon-accent);
+  text-decoration: underline;
+  font: inherit;
+  font-size: 11px;
+  padding: 0;
+  text-align: start;
+  cursor: pointer;
+}
+
+.wowd-dialog-fieldset.is-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.wowd-dialog-fieldset.is-grid > label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.wowd-unit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wowd-unit input,
+.wowd-unit select {
+  height: 26px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.wowd-unit input {
+  width: 5em;
+}
+
+/* ---- 記号と特殊文字・文字カウント -------------------------------------- */
+
+.symbol-group + .symbol-group {
+  margin-top: 4px;
+}
+
+.symbol-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.symbol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 2px;
+}
+
+.symbol-grid button {
+  height: 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.symbol-grid button:hover {
+  background: var(--ribbon-hover);
+  border-color: var(--ribbon-accent);
+}
+
+.wordcount-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.wordcount-table th {
+  text-align: start;
+  font-weight: normal;
+  padding: 4px 0;
+}
+
+.wordcount-table td {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- ナビゲーション ウィンドウ ------------------------------------------ */
+
+.nav-pane {
+  flex: none;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-right: 1px solid var(--ribbon-border);
+  font-size: 12px;
+  min-height: 0;
+}
+
+.nav-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.nav-pane-header button {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.nav-pane-label {
+  padding: 2px 10px 6px;
+  color: var(--ribbon-accent);
+  border-bottom: 1px solid var(--ribbon-border);
+}
+
+.nav-pane-empty {
+  padding: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.nav-pane-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.nav-pane-list button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: start;
+  font: inherit;
+  padding-block: 4px;
+  padding-inline-end: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+.nav-pane-list button:hover {
+  background: var(--ribbon-hover);
+}
+
+.nav-pane-list button.is-current {
+  background: #e8f0fb;
+  border-left-color: var(--ribbon-accent);
+  font-weight: 600;
+}
+
+.app.is-mobile .nav-pane,
+.app[data-size='medium'] .nav-pane {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+}
+
+/* ---- 右クリックメニュー ------------------------------------------------ */
+
+.context-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 220px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+}
+
+.context-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.context-menu button:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.context-menu button:disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.context-menu kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.context-menu hr {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+}
+
+.statusbar-link {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.statusbar-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

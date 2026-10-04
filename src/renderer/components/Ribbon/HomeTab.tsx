@@ -18,9 +18,11 @@ import { useDocumentStore } from '../../store/document'
 import { useUiStore } from '../../store/ui'
 import { halfPtToPt, ptToHalfPt } from '@shared/units'
 import { ensureListDefinition, type ListKind } from '@core/numbering/create'
+import { growFont } from '../../editor/commands/word'
+import { clipboard, fallbackSizeHalfPt, startFormatPainter } from '../../word/actions'
 
 /** Word のフォントサイズ一覧 */
-const FONT_SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
+const FONT_SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72]
 
 /** 日本語環境でよく使うフォント */
 const FONT_FAMILIES = [
@@ -64,8 +66,15 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
   const document = useDocumentStore((s) => s.document)
   const markNumberingChanged = useDocumentStore((s) => s.markNumberingChanged)
   const toggleFind = useUiStore((s) => s.toggleFind)
+  const openDialog = useUiStore((s) => s.openDialog)
+  const formatPainter = useUiStore((s) => s.formatPainter)
 
   const rPr = currentRunProps(editor)
+  // 大きさの指定が無い文字でも、実際の大きさを出す (Word と同じ。「(既定)」では分からない)
+  const shownSize = halfPtToPt(rPr?.sz ?? (editor ? fallbackSizeHalfPt(editor) : 21))
+  const sizeOptions = (FONT_SIZES.includes(shownSize) ? FONT_SIZES : [...FONT_SIZES, shownSize].sort((a, b) => a - b)).map(
+    (s) => ({ value: s, label: String(s) })
+  )
   const pPr = currentParagraphAttrs(editor)
   const disabled = !editor
 
@@ -104,6 +113,42 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
 
   return (
     <div className="ribbon-tab-body">
+      <RibbonGroup label="クリップボード">
+        <RibbonRow>
+          <RibbonButton
+            label="貼り付け"
+            title="貼り付け (Ctrl+V)"
+            wide
+            disabled={disabled}
+            testId="ribbon-paste"
+            onClick={() => editor && void clipboard(editor, 'paste')}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="✂"
+            title="切り取り (Ctrl+X)"
+            disabled={disabled}
+            onClick={() => editor && void clipboard(editor, 'cut')}
+          />
+          <RibbonButton
+            label="⧉"
+            title="コピー (Ctrl+C)"
+            disabled={disabled}
+            onClick={() => editor && void clipboard(editor, 'copy')}
+          />
+          <RibbonButton
+            label="🖌"
+            title="書式のコピー/貼り付け (Ctrl+Shift+C / V)。ダブルクリックで続けて何か所にも貼れます (Esc でやめる)"
+            active={formatPainter != null}
+            disabled={disabled}
+            testId="ribbon-format-painter"
+            onClick={() => editor && startFormatPainter(editor)}
+            onDoubleClick={() => editor && startFormatPainter(editor, true)}
+          />
+        </RibbonRow>
+      </RibbonGroup>
+
       <RibbonGroup label={t.ribbon.groups.font}>
         <RibbonRow>
           <RibbonSelect
@@ -122,9 +167,21 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
           <RibbonSelect
             title={t.ribbon.fontSize}
             width={64}
-            value={rPr?.sz != null ? halfPtToPt(rPr.sz) : 0}
-            options={[{ value: 0, label: '(既定)' }, ...FONT_SIZES.map((s) => ({ value: s, label: String(s) }))]}
-            onChange={(pt) => editor && patchRunProps(editor, { sz: pt ? ptToHalfPt(pt) : null })}
+            value={shownSize}
+            options={sizeOptions}
+            onChange={(pt) => editor && patchRunProps(editor, { sz: ptToHalfPt(pt), szCs: ptToHalfPt(pt) })}
+          />
+          <RibbonButton
+            label={<span className="ribbon-grow">A<sup>▲</sup></span>}
+            title="フォントサイズの拡大 (Ctrl+Shift+>)"
+            disabled={disabled}
+            onClick={run((e) => growFont(e, 1, fallbackSizeHalfPt(e)))}
+          />
+          <RibbonButton
+            label={<span className="ribbon-grow is-small">A<sup>▼</sup></span>}
+            title="フォントサイズの縮小 (Ctrl+Shift+<)"
+            disabled={disabled}
+            onClick={run((e) => growFont(e, -1, fallbackSizeHalfPt(e)))}
           />
         </RibbonRow>
         <RibbonRow>
@@ -283,6 +340,14 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
             options={LINE_SPACINGS.map((v) => ({ value: v, label: String(v) }))}
             onChange={(v) => editor && setLineSpacing(editor, v)}
           />
+          <RibbonButton
+            label="段落…"
+            title="段落の設定 (インデント・間隔・行間・配置)"
+            wide
+            disabled={disabled}
+            testId="ribbon-paragraph-dialog"
+            onClick={() => openDialog('paragraph')}
+          />
         </RibbonRow>
       </RibbonGroup>
 
@@ -301,11 +366,26 @@ export function HomeTab({ editor }: { editor: Editor | null }): React.JSX.Elemen
       <RibbonGroup label={t.ribbon.groups.editing}>
         <RibbonRow>
           <RibbonButton
-            label="🔍"
+            label="🔍 検索"
             title={t.ribbon.find}
             wide
             disabled={disabled}
             onClick={() => toggleFind(true)}
+          />
+        </RibbonRow>
+        <RibbonRow>
+          <RibbonButton
+            label="置換"
+            title="置換 (Ctrl+H)"
+            disabled={disabled}
+            onClick={() => toggleFind(true)}
+          />
+          <RibbonButton
+            label="ジャンプ"
+            title="ページ・見出しへ移動する (Ctrl+G)"
+            wide
+            disabled={disabled}
+            onClick={() => openDialog('goto')}
           />
         </RibbonRow>
       </RibbonGroup>
