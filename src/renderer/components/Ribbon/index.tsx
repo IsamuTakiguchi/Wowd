@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/react'
 import { HomeTab } from './HomeTab'
 import { FileActions } from './FileActions'
 import { AutoSaveToggle } from '../AutoSaveToggle'
+import { QuickAccess } from '../QuickAccess'
 import { InsertTab, LayoutTab, ViewTab, ReferencesTab, ReviewTab } from './OtherTabs'
 import { OkaguchiTab } from './OkaguchiTab'
 import { useUiStore, type RibbonTab } from '../../store/ui'
@@ -29,6 +30,7 @@ export function Ribbon({ editor }: { editor: Editor | null }): React.JSX.Element
       <div className="ribbon-titlebar">
         <span className="ribbon-appname">Wowd</span>
         <AutoSaveToggle />
+        <QuickAccess editor={editor} />
         <span className="ribbon-filename">
           {fileName}
           {dirty ? t.app.dirtyMark : ''}

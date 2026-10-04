@@ -9,8 +9,10 @@ import { useDocumentStore, EMPTY_DOCUMENT_DATA } from '../store/document'
  *   クリック            … そのタブへ移る
  *   ダブルクリック      … 名前を変える (未保存の文書だけ。保存済みはファイル名そのもの)
  *   右クリック          … 挿入・名前の変更・色・閉じる などのメニュー
- *   ドラッグ            … 並べ替え
+ *   ドラッグ            … 並べ替え (Ctrl を押しながらだと複製)
  *   ＋                  … 新しいタブ
+ *   ◀ ▶                 … 見出しの列を送る (タブが多くて隠れたとき)
+ *   ≡ / ◀▶ の右クリック … すべてのタブの一覧 (Excel の「シートの選択」)
  *   Ctrl+PageUp/Down    … 前後のタブへ (App で受ける)
  *
  * Excel に無いもの: 各タブの × (閉じる) と、未保存の印 (●)。
@@ -41,6 +43,8 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
   )
 
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [listOpen, setListOpen] = useState(false)
+  const [overflow, setOverflow] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dropAt, setDropAt] = useState<number | null>(null)
@@ -52,6 +56,24 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeId])
 
+  // 見出しが列に収まらないときだけ送りボタンを効かせる
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const check = (): void => setOverflow(el.scrollWidth > el.clientWidth + 1)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [tabs.length])
+
+  const scrollList = (direction: -1 | 1, toEnd: boolean): void => {
+    const el = listRef.current
+    if (!el) return
+    if (toEnd) el.scrollTo({ left: direction < 0 ? 0 : el.scrollWidth })
+    else el.scrollBy({ left: direction * Math.max(120, el.clientWidth * 0.6) })
+  }
+
   // スマホでは画面が狭いので、2 枚以上のときだけ出す
   if (compact && tabs.length < 2) return null
 
@@ -59,6 +81,45 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
 
   return (
     <div className="tabbar" data-testid="tabbar">
+      <div
+        className="tabbar-nav"
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setListOpen(true)
+        }}
+      >
+        <button
+          type="button"
+          className="tabbar-navbtn"
+          title="前の見出しを表示 (Ctrl+クリックで先頭へ)。右クリックですべてのタブの一覧"
+          aria-label="前の見出しを表示"
+          disabled={!overflow}
+          onClick={(e) => scrollList(-1, e.ctrlKey || e.metaKey)}
+        >
+          ◀
+        </button>
+        <button
+          type="button"
+          className="tabbar-navbtn"
+          title="次の見出しを表示 (Ctrl+クリックで末尾へ)。右クリックですべてのタブの一覧"
+          aria-label="次の見出しを表示"
+          disabled={!overflow}
+          onClick={(e) => scrollList(1, e.ctrlKey || e.metaKey)}
+        >
+          ▶
+        </button>
+        <button
+          type="button"
+          className="tabbar-navbtn"
+          title="すべてのタブの一覧"
+          aria-label="すべてのタブの一覧"
+          aria-expanded={listOpen}
+          data-testid="tab-list"
+          onClick={() => setListOpen((v) => !v)}
+        >
+          ≡
+        </button>
+      </div>
       <div
         className="tabbar-list"
         role="tablist"
@@ -97,16 +158,22 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
             }}
             onDragStart={(e) => {
               setDragFrom(index)
-              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.effectAllowed = 'copyMove'
               e.dataTransfer.setData('text/plain', String(index))
             }}
             onDragOver={(e) => {
               e.preventDefault()
+              // Ctrl を押しながらなら複製 (Excel と同じ)。カーソルの形でも伝える
+              e.dataTransfer.dropEffect = e.ctrlKey || e.altKey ? 'copy' : 'move'
               setDropAt(index)
             }}
             onDrop={(e) => {
               e.preventDefault()
-              if (dragFrom !== null) store().moveTab(dragFrom, index)
+              if (dragFrom !== null) {
+                const source = tabs[dragFrom]
+                if ((e.ctrlKey || e.altKey) && source) store().duplicateTab(source.id, index)
+                else store().moveTab(dragFrom, index)
+              }
               setDragFrom(null)
               setDropAt(null)
             }}
@@ -161,6 +228,8 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
       {menu && (
         <TabMenu
           tab={summaries.find((t) => t.id === menu.id) ?? null}
+          index={summaries.findIndex((t) => t.id === menu.id)}
+          count={tabs.length}
           x={menu.x}
           y={menu.y}
           canCloseOthers={tabs.length > 1}
@@ -168,6 +237,8 @@ export function TabBar({ compact = false }: { compact?: boolean }): React.JSX.El
           onClose={() => setMenu(null)}
         />
       )}
+
+      {listOpen && <TabList tabs={summaries} onClose={() => setListOpen(false)} />}
     </div>
   )
 }
@@ -207,6 +278,8 @@ function RenameField({
 /** 右クリックのメニュー。Excel のシート見出しのメニューに合わせる */
 function TabMenu({
   tab,
+  index,
+  count,
   x,
   y,
   canCloseOthers,
@@ -214,6 +287,8 @@ function TabMenu({
   onClose
 }: {
   tab: TabSummary | null
+  index: number
+  count: number
   x: number
   y: number
   canCloseOthers: boolean
@@ -278,6 +353,26 @@ function TabMenu({
       >
         名前を付けて保存…
       </button>
+      <button
+        type="button"
+        role="menuitem"
+        data-testid="tab-duplicate"
+        title="この文書の複製を、未保存の新しいタブに作ります (Ctrl を押しながらドラッグでも作れます)"
+        onClick={run(() => store().duplicateTab(tab.id))}
+      >
+        コピーを作成
+      </button>
+      <button type="button" role="menuitem" disabled={index <= 0} onClick={run(() => store().moveTab(index, index - 1))}>
+        左へ移動
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        disabled={index < 0 || index >= count - 1}
+        onClick={run(() => store().moveTab(index, index + 1))}
+      >
+        右へ移動
+      </button>
       <div className="tabbar-menu-label">タブの色</div>
       <div className="tabbar-menu-colors">
         {TAB_COLORS.map((c) => (
@@ -315,6 +410,51 @@ function TabMenu({
       >
         ほかのタブを閉じる
       </button>
+    </div>
+  )
+}
+
+/**
+ * すべてのタブの一覧 (Excel の「シートの選択」)。
+ * タブが多くて見出しが隠れているときに、名前から選んで移る。
+ */
+function TabList({ tabs, onClose }: { tabs: TabSummary[]; onClose: () => void }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const away = (e: MouseEvent): void => {
+      if (!ref.current?.contains(e.target as Node)) onClose()
+    }
+    const esc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('mousedown', away)
+    window.addEventListener('keydown', esc)
+    ref.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
+    return () => {
+      window.removeEventListener('mousedown', away)
+      window.removeEventListener('keydown', esc)
+    }
+  }, [onClose])
+  return (
+    <div ref={ref} className="tabbar-menu tabbar-alltabs" role="menu" aria-label="すべてのタブ" data-testid="tab-list-menu">
+      <div className="tabbar-menu-label">タブを選ぶ ({tabs.length} 枚)</div>
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="menuitemradio"
+          aria-checked={t.active}
+          className={t.active ? 'is-current' : undefined}
+          onClick={() => {
+            onClose()
+            useTabsStore.getState().switchTo(t.id)
+          }}
+        >
+          <span className="tabbar-swatch-mini" style={{ background: t.color ?? 'transparent' }} />
+          {t.title}
+          {t.dirty ? ' ●' : ''}
+        </button>
+      ))}
     </div>
   )
 }

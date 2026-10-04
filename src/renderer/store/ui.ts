@@ -258,6 +258,14 @@ export const useUiStore = create<UiState>((set) => ({
     )
 }))
 
+/**
+ * 倍率を 10% 刻みで 1 段動かす。端数 (幅に合わせた 87% など) からは、
+ * その向きの次の 10 の倍数へ (87 → 90 / 80)。Word の拡大・縮小ボタンと同じ
+ */
+export function stepZoom(current: number, direction: 1 | -1): number {
+  return direction > 0 ? Math.floor(current / 10) * 10 + 10 : Math.ceil(current / 10) * 10 - 10
+}
+
 function clamp(zoom: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoom)))
 }

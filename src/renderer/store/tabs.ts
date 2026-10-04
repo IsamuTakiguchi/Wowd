@@ -94,6 +94,15 @@ interface TabsState {
   closeOthers: (id: string) => Promise<void>
   /** 並べ替え。from の位置にあるタブを to の位置へ */
   moveTab: (from: number, to: number) => void
+  /**
+   * タブの複製を作る (Excel の「移動またはコピー → コピーを作成」、Ctrl+ドラッグ)。
+   *
+   * 複製は未保存の新しい文書になる (元のファイルを上書きしないため)。
+   * 名前は「元の名前 (2)」。Excel のシートの複製と同じ付け方。
+   *
+   * @param at 置く位置。省略すると元のタブの右隣
+   */
+  duplicateTab: (id: string, at?: number) => void
   setColor: (id: string, color: string | null) => void
   /**
    * 名前を変える。未保存の文書だけ。
@@ -107,6 +116,16 @@ interface TabsState {
   updateParked: (id: string, patch: Partial<DocumentData>) => void
   /** 裏のタブの中身を覗く。自動保存と退避が使う */
   parkedData: (id: string) => DocumentData | null
+}
+
+/** 「名前 (2)」「名前 (3)」… 開いているタブと重ならない番号を付ける */
+function copyName(title: string, get: () => TabsState): string {
+  const base = title.replace(/ \(\d+\)$/, '')
+  const taken = new Set(tabSummaries(get()).map((t) => t.title.replace(/\.docx$/i, '')))
+  for (let n = 2; ; n++) {
+    const name = `${base} (${n})`
+    if (!taken.has(name)) return name
+  }
 }
 
 let idCounter = 1
@@ -290,6 +309,49 @@ export const useTabsStore = create<TabsState>((set, get) => {
       if (!moved) return
       tabs.splice(to, 0, moved)
       set({ tabs })
+    },
+
+    duplicateTab(id, at) {
+      const { tabs, activeId, parked } = get()
+      const index = tabs.findIndex((t) => t.id === id)
+      if (index < 0) return
+      const ds = useDocumentStore.getState()
+      const source: DocumentData | null =
+        id === activeId
+          ? { ...pickDocumentData(ds), document: captureLatestDocument(ds) }
+          : (parked.get(id)?.data ?? null)
+      if (!source?.document) return
+
+      const title = source.filePath
+        ? (source.filePath.split(/[\\/]/).pop() ?? '').replace(/\.docx$/i, '')
+        : (source.untitledName ?? '文書')
+      const copy: DocumentData = {
+        ...source,
+        // 中身は丸ごと写す。番号定義などはその場で書き換えるので、共有すると元の文書まで変わる
+        document: structuredClone(source.document),
+        filePath: null,
+        untitledName: copyName(title, get),
+        dirty: true
+      }
+
+      park()
+      const newId = nextId()
+      const position = at ?? index + 1
+      set((s) => {
+        const next = [...s.tabs]
+        const color = s.tabs[index]?.color ?? null
+        next.splice(Math.max(0, Math.min(position, next.length)), 0, { id: newId, color })
+        return { tabs: next, activeId: newId }
+      })
+      useDocumentStore.setState({
+        ...copy,
+        pendingEditorState: null,
+        pendingScrollTop: null,
+        error: null,
+        busy: false,
+        revision: useDocumentStore.getState().revision + 1,
+        loadToken: useDocumentStore.getState().loadToken + 1
+      })
     },
 
     setColor(id, color) {

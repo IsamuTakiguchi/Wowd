@@ -245,6 +245,9 @@ test('Alt+Z 全角1文字入力: 括弧を半分の幅にして全角 1 字に�
   await page.keyboard.press('Alt+z')
   await page.getByTestId('okaguchi-wide-input').fill('1')
   await page.keyboard.press('Enter')
+  // 画面が閉じてエディタに戻ってから打つ
+  await expect(page.locator('dialog')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toBeFocused()
   await page.keyboard.type('後')
   expect((await texts())[0]).toBe('前(1)　後')
   // 括弧の箱は縮み、後ろが詰まる: 「(1)」全体で全角 1 字ぶん前後

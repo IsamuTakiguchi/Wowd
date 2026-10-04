@@ -5,7 +5,7 @@ import { Selection, type EditorState } from '@tiptap/pm/state'
 import { fromWowdDoc } from './serialize/fromWowdDoc'
 import { toWowdDoc } from './serialize/toWowdDoc'
 import { useDocumentStore } from '../store/document'
-import { useUiStore } from '../store/ui'
+import { useUiStore, stepZoom } from '../store/ui'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fontsToCss } from '@core/css/runCss'
 import { buildStyleSheet } from '@core/css/styleSheet'
@@ -375,12 +375,34 @@ export function WowdEditor({
    * 倍率に触れた時点で manual になり、以後は指定どおりにする。
    * ただしスマホでは指でつまんで直せないので、常に幅に合わせる。
    */
-  const scale = snapScale(mobile || zoomMode === 'auto' ? fitScale : zoom / 100)
+  const rawScale = mobile || zoomMode === 'auto' ? fitScale : zoom / 100
+  const scale = snapScale(rawScale)
 
-  // 実際に掛かっている倍率をステータスバーへ。指定した値と食い違いうるので
+  // 実際に掛かっている倍率をステータスバーへ。指定した値と食い違いうるので。
+  // にじみ止めの丸め (1/64 刻み) の前の値を出す。丸めた値を出すと、60% を選んだのに 59% と出る
   useEffect(() => {
-    setEffectiveZoom(Math.round(scale * 100))
-  }, [scale, setEffectiveZoom])
+    setEffectiveZoom(Math.round(rawScale * 100))
+  }, [rawScale, setEffectiveZoom])
+
+  /**
+   * Ctrl + ホイールで拡大縮小 (Excel・Word と同じ)。
+   *
+   * 止めないとブラウザ (Electron) が画面全体を拡大してしまい、リボンまで大きくなる。
+   * 今掛かっている倍率から 10% ずつ動かす (幅に合わせている最中でも、見えている大きさから)。
+   */
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el || mobile) return
+    const onWheel = (e: WheelEvent): void => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      e.preventDefault()
+      const ui = useUiStore.getState()
+      const step = e.deltaY < 0 ? 10 : -10
+      ui.setZoom(stepZoom(ui.effectiveZoom, step > 0 ? 1 : -1))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [mobile])
 
   return (
     <div

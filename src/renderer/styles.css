@@ -1990,3 +1990,222 @@ body {
   min-height: 36px;
   text-align: center;
 }
+
+/* ---- シート見出しの送り (Excel の ◀ ▶) とタブの一覧 ---------------------- */
+
+.tabbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 4px;
+  border-right: 1px solid #cfcfcf;
+}
+
+.tabbar-navbtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #555;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.tabbar-navbtn:hover:not(:disabled) {
+  background: #d6d6d6;
+}
+
+.tabbar-navbtn:disabled {
+  color: #b5b5b5;
+  cursor: default;
+}
+
+.tabbar-alltabs {
+  left: 6px;
+  bottom: 34px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.tabbar-alltabs button[role='menuitemradio'] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tabbar-alltabs button[role='menuitemradio']:hover,
+.tabbar-alltabs button[role='menuitemradio']:focus {
+  background: #eef3fb;
+  outline: none;
+}
+
+.tabbar-alltabs button.is-current {
+  font-weight: 600;
+}
+
+.tabbar-swatch-mini {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid #c8c8c8;
+  flex: none;
+}
+
+/* スマホでは見出しを指で送れるので、送りボタンは出さない */
+.app.is-mobile .tabbar-nav .tabbar-navbtn:not([data-testid='tab-list']) {
+  display: none;
+}
+
+/* ---- ステータスバー: 表示の切り替えと倍率 (Excel と同じ並び) ------------- */
+
+.statusbar-views {
+  display: flex;
+  gap: 1px;
+}
+
+.statusbar-views button,
+.statusbar-zoom .statusbar-step,
+.statusbar-zoom .statusbar-zoom-readout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.statusbar-views button:hover,
+.statusbar-zoom .statusbar-step:hover,
+.statusbar-zoom .statusbar-zoom-readout:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.statusbar-views button.is-active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.statusbar-zoom {
+  position: relative;
+}
+
+.statusbar-zoom .statusbar-zoom-readout {
+  min-width: 42px;
+}
+
+.statusbar-zoom-menu {
+  position: absolute;
+  right: 0;
+  bottom: 26px;
+  z-index: 60;
+  min-width: 150px;
+  padding: 4px 0;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.statusbar-zoom-menu button {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+
+.statusbar-zoom-menu button:hover,
+.statusbar-zoom-menu button[aria-checked='true'] {
+  background: var(--ribbon-hover);
+}
+
+.statusbar-zoom-custom {
+  padding: 4px 14px 2px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 4px;
+}
+
+.statusbar-zoom-custom label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusbar-zoom-custom input {
+  width: 4em;
+  height: 22px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.app[data-size='medium'] .statusbar-views {
+  display: none;
+}
+
+/* ---- クイック アクセス ツールバー ---------------------------------------- */
+
+.quick-access {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 6px;
+  border-left: 1px solid var(--ribbon-border);
+  border-right: 1px solid var(--ribbon-border);
+}
+
+.quick-access button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ribbon-accent);
+  cursor: pointer;
+}
+
+.quick-access button:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.quick-access button:disabled {
+  color: #b5b5b5;
+  cursor: default;
+}
+
+/* 未保存のときは保存ボタンに小さな印 */
+.quick-access button.is-dirty {
+  position: relative;
+}
+
+.quick-access button.is-dirty::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d13438;
+}

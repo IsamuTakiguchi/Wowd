@@ -75,10 +75,24 @@ export function App(): React.JSX.Element {
    */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
-      if (e.key === 'PageDown' || e.key === 'PageUp') {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const tabs = useTabsStore.getState()
+      if (!e.shiftKey && (e.key === 'PageDown' || e.key === 'PageUp')) {
         e.preventDefault()
-        useTabsStore.getState().cycle(e.key === 'PageDown' ? 1 : -1)
+        tabs.cycle(e.key === 'PageDown' ? 1 : -1)
+        return
+      }
+      // Ctrl+Tab / Ctrl+Shift+Tab でも移る (Excel でブックを切り替えるキー)
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        tabs.cycle(e.shiftKey ? -1 : 1)
+        return
+      }
+      // Ctrl+W / Ctrl+F4 でいまのタブを閉じる (Excel でブックを閉じるキー)。
+      // ブラウザ版の Ctrl+W はブラウザが先に取るので、ここに来るのはアプリ版だけ
+      if (!e.shiftKey && (e.key.toLowerCase() === 'w' || e.key === 'F4')) {
+        e.preventDefault()
+        void tabs.closeTab(tabs.activeId)
       }
     }
     window.addEventListener('keydown', onKey, true)

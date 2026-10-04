@@ -295,3 +295,86 @@ test.describe('自動保存', () => {
     await expect(page.locator('[data-testid="autosave-status"]')).toHaveText('保存すると自動保存が始まります')
   })
 })
+
+test.describe('Excel に近づけた操作', () => {
+  test('右クリック →「コピーを作成」で、未保存の複製が右隣にできる (中身は別物)', async () => {
+    await typeBody('元の文書')
+    await page.locator('.tabbar-tab').first().click({ button: 'right' })
+    await page.getByTestId('tab-duplicate').click()
+    await expect(page.locator('.tabbar-tab')).toHaveCount(2)
+    const [first, second] = await titles()
+    expect(second).toBe(`${first} (2)`)
+    await expect(page.locator('.tabbar-tab').nth(1)).toHaveClass(/is-active/)
+    expect(await bodyText()).toContain('元の文書')
+    // 複製に足しても元は変わらない
+    await typeBody('だけ')
+    await page.locator('.tabbar-tab').first().click()
+    expect(await bodyText()).not.toContain('だけ')
+  })
+
+  test('Ctrl+Tab / Ctrl+Shift+Tab で移り、Ctrl+W で閉じる', async () => {
+    await page.locator('[data-testid="tab-add"]').click()
+    await page.locator('[data-testid="tab-add"]').click()
+    await expect(page.locator('.tabbar-tab')).toHaveCount(3)
+    await page.locator('.wowd-content').click()
+    await page.keyboard.press('Control+Tab')
+    await expect(page.locator('.tabbar-tab').nth(0)).toHaveClass(/is-active/)
+    await page.keyboard.press('Control+Shift+Tab')
+    await expect(page.locator('.tabbar-tab').nth(2)).toHaveClass(/is-active/)
+    await page.keyboard.press('Control+w')
+    await expect(page.locator('.tabbar-tab')).toHaveCount(2)
+  })
+
+  test('≡ でタブの一覧を出し、名前から移る', async () => {
+    await page.locator('[data-testid="tab-add"]').click()
+    const [first] = await titles()
+    await page.getByTestId('tab-list').click()
+    const menu = page.getByTestId('tab-list-menu')
+    await expect(menu.getByRole('menuitemradio')).toHaveCount(2)
+    await menu.getByRole('menuitemradio', { name: new RegExp(`^${first}`) }).click()
+    await expect(page.locator('.tabbar-tab').nth(0)).toHaveClass(/is-active/)
+    await expect(menu).toHaveCount(0)
+  })
+
+  test('ステータスバー: 選んだ文字数、− ＋ と倍率の選択、表示の切り替え', async () => {
+    await typeBody('あいうえお')
+    await page.keyboard.press('Shift+Home')
+    await expect(page.getByTestId('selection-count')).toHaveText('選択: 5 文字')
+
+    await page.getByTestId('zoom-readout').click()
+    await page.getByTestId('zoom-menu').getByRole('menuitemradio', { name: '75%' }).click()
+    await expect(page.getByTestId('zoom-readout')).toHaveText('75%')
+    // 次の 10 の倍数へ (Word の拡大・縮小ボタンと同じ)
+    await page.getByTestId('zoom-in').click()
+    await expect(page.getByTestId('zoom-readout')).toHaveText('80%')
+    await page.getByTestId('zoom-out').click()
+    await page.getByTestId('zoom-out').click()
+    await expect(page.getByTestId('zoom-readout')).toHaveText('60%')
+
+    await page.getByTestId('status-view-draft').click()
+    await expect(page.locator('.wowd-viewport')).toHaveAttribute('data-view-mode', 'draft')
+    await page.getByTestId('status-view-print').click()
+    await expect(page.locator('.wowd-viewport')).toHaveAttribute('data-view-mode', 'print')
+    await page.getByTestId('zoom-fit').click()
+  })
+
+  test('Ctrl+ホイールで拡大縮小', async () => {
+    await page.getByTestId('zoom-readout').click()
+    await page.getByTestId('zoom-menu').getByRole('menuitemradio', { name: '100%' }).click()
+    await page.locator('.wowd-viewport').hover()
+    await page.keyboard.down('Control')
+    await page.mouse.wheel(0, -100)
+    await page.keyboard.up('Control')
+    await expect(page.getByTestId('zoom-readout')).toHaveText('110%')
+    await page.getByTestId('zoom-fit').click()
+  })
+
+  test('クイック アクセス: 元に戻す・やり直し', async () => {
+    await typeBody('取り消す')
+    await expect(page.getByTestId('qat-undo')).toBeEnabled()
+    await page.getByTestId('qat-undo').click()
+    expect(await bodyText()).not.toContain('取り消す')
+    await page.getByTestId('qat-redo').click()
+    expect(await bodyText()).toContain('取り消す')
+  })
+})
