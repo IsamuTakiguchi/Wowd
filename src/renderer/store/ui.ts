@@ -61,6 +61,14 @@ export interface UiState {
    * 構造で保証しているので、ここだけ別扱いにしない。
    */
   showTrimMarks: boolean
+  /**
+   * 自動保存。オンなら、編集が止まって少したつと元のファイルへ上書きする。
+   *
+   * 既定はオフ。Office も手元のファイルではオフが既定で、オンにするかは本人が決める。
+   * 相手方から届いた書面を開いて眺めるだけのつもりが、うっかり打った 1 文字で
+   * 原本が書き換わる、ということを既定では起こさない。
+   */
+  autoSave: boolean
   /** 現在カーソルがあるページ (1 始まり) */
   currentPage: number
   /** 文書全体のページ数 */
@@ -94,6 +102,7 @@ export interface UiState {
   toggleGrid: (on?: boolean) => void
   toggleRuler: (on?: boolean) => void
   toggleTrimMarks: (on?: boolean) => void
+  toggleAutoSave: (on?: boolean) => void
   setPageInfo: (current: number, count: number) => void
   setOverflowingTables: (n: number) => void
   openDialog: (kind: DialogKind) => void
@@ -111,6 +120,7 @@ const DEFAULT_AUTHOR = '利用者'
 const AUTHOR_KEY = 'wowd.author'
 const RULER_KEY = 'wowd.showRuler'
 const TRIM_KEY = 'wowd.showTrimMarks'
+const AUTOSAVE_KEY = 'wowd.autoSave'
 
 function loadAuthor(): string {
   // 保存できない環境 (プライベートウィンドウなど) でも動くようにする
@@ -165,6 +175,7 @@ export const useUiStore = create<UiState>((set) => ({
   showRuler: loadFlag(RULER_KEY, true),
   // トンボは入稿のときだけ要るので既定では出さない
   showTrimMarks: loadFlag(TRIM_KEY, false),
+  autoSave: loadFlag(AUTOSAVE_KEY, false),
   currentPage: 1,
   pageCount: 1,
   overflowingTables: 0,
@@ -197,6 +208,12 @@ export const useUiStore = create<UiState>((set) => ({
       const showTrimMarks = on ?? !s.showTrimMarks
       saveFlag(TRIM_KEY, showTrimMarks)
       return { showTrimMarks }
+    }),
+  toggleAutoSave: (on) =>
+    set((s) => {
+      const autoSave = on ?? !s.autoSave
+      saveFlag(AUTOSAVE_KEY, autoSave)
+      return { autoSave }
     }),
   openDialog: (dialog) => set({ dialog }),
   toggleComments: (open) => set((s) => ({ commentsOpen: open ?? !s.commentsOpen })),

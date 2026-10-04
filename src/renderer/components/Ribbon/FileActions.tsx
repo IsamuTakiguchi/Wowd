@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import { useDocumentStore } from '../../store/document'
+import { useTabsStore } from '../../store/tabs'
 import { isElectron } from '../../platform'
 import { exportPdf } from '../../print/exportPdf'
 
@@ -30,7 +31,7 @@ export function FileActions({ editor }: { editor: Editor | null }): React.JSX.El
         type="button"
         data-testid="file-open"
         title="この端末のファイルを開く"
-        onClick={() => void store().openDialog()}
+        onClick={() => void useTabsStore.getState().openDialog()}
       >
         開く
       </button>
@@ -48,7 +49,7 @@ export function FileActions({ editor }: { editor: Editor | null }): React.JSX.El
         type="button"
         data-testid="file-new"
         title="新しい文書を作る"
-        onClick={() => void store().newDocument('blank-a4')}
+        onClick={() => void useTabsStore.getState().newTab('blank-a4')}
       >
         新規
       </button>

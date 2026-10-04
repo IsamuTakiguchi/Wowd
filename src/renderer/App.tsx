@@ -18,6 +18,9 @@ import { RecoveryBanner } from './components/RecoveryBanner'
 import { platform } from './platform'
 import { useLayoutSize } from './hooks/useIsMobile'
 import { MobileTopBar, MobileBottomBar } from './components/mobile/MobileShell'
+import { TabBar } from './components/TabBar'
+import { useTabsStore, nameFirstDocument } from './store/tabs'
+import { startFileAutosave } from './store/fileAutosave'
 
 export function App(): React.JSX.Element {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -52,9 +55,31 @@ export function App(): React.JSX.Element {
     registerPrintSource(editor, store.document, store.fileName())
   }, [editor, store])
 
-  // 起動時は空の A4 文書を開く
+  // 起動時は空の A4 文書を開く。タブが何枚あっても見分けられるよう「文書1」と名付ける
   useEffect(() => {
+    nameFirstDocument()
     void useDocumentStore.getState().newDocument('blank-a4')
+  }, [])
+
+  // 自動保存 (元のファイルへの上書き)。オフの間は何もしない
+  useEffect(() => startFileAutosave(), [])
+
+  /**
+   * タブの切り替え。Excel と同じく Ctrl+PageDown で次、Ctrl+PageUp で前。
+   *
+   * エディタの中で押されても効くように、窓全体で先に受ける (capture)。
+   * ProseMirror はこの組み合わせを使っていないので、横取りしても困らない
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+      if (e.key === 'PageDown' || e.key === 'PageUp') {
+        e.preventDefault()
+        useTabsStore.getState().cycle(e.key === 'PageDown' ? 1 : -1)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 
   /**
@@ -80,14 +105,15 @@ export function App(): React.JSX.Element {
     const handler = (cmd: MenuCommand): void => {
       const state = useDocumentStore.getState()
       switch (cmd.kind) {
+        // 新規作成も開くのも新しいタブに。いまの文書を閉じさせない (Excel のブックと同じ)
         case 'file.new':
-          void state.newDocument(cmd.template)
+          void useTabsStore.getState().newTab(cmd.template)
           break
         case 'file.open':
-          void state.openDialog()
+          void useTabsStore.getState().openDialog()
           break
         case 'file.openRecent':
-          void state.openPath(cmd.path)
+          void useTabsStore.getState().openPath(cmd.path)
           break
         case 'file.save':
           void state.save()
@@ -159,13 +185,14 @@ export function App(): React.JSX.Element {
   // ファイル関連付けや「アプリで開く」からの起動
   useEffect(() => {
     return platform.onOpenFileRequest((path) => {
-      void useDocumentStore.getState().openPath(path)
+      void useTabsStore.getState().openPath(path)
     })
   }, [])
 
   // main 側の終了確認に答える
   useEffect(() => {
-    return platform.onQueryDirty(() => useDocumentStore.getState().dirty)
+    // 裏に回したタブも数える。表の文書だけ見ていると、裏のタブの編集が黙って消える
+    return platform.onQueryDirty(() => useTabsStore.getState().anyDirty())
   }, [])
 
   return (
@@ -221,6 +248,7 @@ export function App(): React.JSX.Element {
       <PageSetupDialog open={dialog === 'pageSetup'} onClose={() => openDialog(null)} />
       <HeaderFooterDialog open={dialog === 'headerFooter'} onClose={() => openDialog(null)} />
 
+      <TabBar compact={mobile} />
       {mobile ? <MobileBottomBar editor={editor} /> : <StatusBar editor={editor} />}
     </div>
   )

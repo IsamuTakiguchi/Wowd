@@ -62,6 +62,10 @@ declare global {
       suggestedName?: string
       types?: { description: string; accept: Record<string, string[]> }[]
     }) => Promise<FileSystemFileHandle>
+    showOpenFilePicker?: (options: {
+      types?: { description: string; accept: Record<string, string[]> }[]
+      multiple?: boolean
+    }) => Promise<FileSystemFileHandle[]>
     launchQueue?: {
       setConsumer: (cb: (params: { files: FileSystemFileHandle[] }) => void) => void
     }
@@ -168,8 +172,9 @@ async function shareOrDownload(name: string, blob: Blob): Promise<void> {
 }
 
 /** 復元の控えの id。Electron 版と同じく元の名前から決めるので、同じ文書で増えない */
-function recoveryIdFor(originalPath: string | null): string {
-  if (!originalPath) return 'untitled'
+function recoveryIdFor(originalPath: string | null, slot?: string): string {
+  // 未保存の文書はタブごとに分ける。分けないと「無題」同士が上書きし合う
+  if (!originalPath) return slot && /^[A-Za-z0-9]{1,24}$/.test(slot) ? `untitled-${slot}` : 'untitled'
   let hash = 0x811c9dc5
   for (let i = 0; i < originalPath.length; i++) {
     hash ^= originalPath.charCodeAt(i)
@@ -180,6 +185,25 @@ function recoveryIdFor(originalPath: string | null): string {
 
 export const webPlatform: WowdApi = {
   async openDialog(): Promise<OpenedFile | null> {
+    // 持ち手を得られる環境ではそちらで開く。得た持ち手は保存にも使えるので、
+    // 開いたファイルへそのまま上書き保存 (と自動保存) ができる
+    if (typeof window.showOpenFilePicker === 'function') {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Word 文書', accept: { [DOCX_TYPE]: ['.docx'] } }],
+          multiple: false
+        })
+        if (!handle) return null
+        const picked = await handle.getFile()
+        const bytes = await bytesOf(picked)
+        handles.set(handle.name, handle)
+        await rememberRecent(picked.name, bytes)
+        return { path: picked.name, bytes }
+      } catch (err) {
+        // 取り消しは AbortError。それ以外 (権限など) は従来の選び方に回す
+        if (err instanceof Error && err.name === 'AbortError') return null
+      }
+    }
     const file = await pickFile('.docx,' + DOCX_TYPE)
     if (!file) return null
     const bytes = await bytesOf(file)
@@ -211,6 +235,11 @@ export const webPlatform: WowdApi = {
     }
     // 保存先を選ぶ手段が無い環境では、名前だけ決めて writeFile に任せる
     return suggested
+  },
+
+  canWriteInPlace(path: string): boolean {
+    // 持ち手が無いファイルに書くとダウンロードになる。自動保存では使えない
+    return handles.has(basename(path))
   },
 
   async writeFile(path: string, bytes: Uint8Array): Promise<void> {
@@ -280,9 +309,14 @@ export const webPlatform: WowdApi = {
     }
   },
 
-  async saveRecovery(bytes: Uint8Array, originalPath: string | null, name: string): Promise<void> {
+  async saveRecovery(
+    bytes: Uint8Array,
+    originalPath: string | null,
+    name: string,
+    slot?: string
+  ): Promise<void> {
     await idbPut<RecoveryRecord>('recovery', {
-      id: recoveryIdFor(originalPath),
+      id: recoveryIdFor(originalPath, slot),
       originalPath,
       name,
       savedAt: Date.now(),

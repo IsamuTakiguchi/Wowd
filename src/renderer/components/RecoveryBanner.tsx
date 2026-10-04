@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RecoveryEntry } from '@shared/ipc'
 import { useDocumentStore } from '../store/document'
+import { useTabsStore } from '../store/tabs'
 import { t } from '../i18n/ja'
 import { platform } from '../platform'
 
@@ -36,9 +37,12 @@ export function RecoveryBanner(): React.JSX.Element | null {
         return
       }
       // 元のパスは引き継がない。上書き保存で不用意に原本を潰さないため、
-      // 保存するときは名前を付けて保存させる
-      await useDocumentStore.getState().openBytes(bytes, null)
-      setEntries([])
+      // 保存するときは名前を付けて保存させる。
+      // 1 件ずつ別のタブに開く。タブを何枚も開いたまま落ちたとき、
+      // 1 件しか戻せないと残りの編集が失われる
+      await useTabsStore.getState().openFile({ path: null, bytes })
+      useDocumentStore.setState({ untitledName: `復元_${entry.name.replace(/\.docx$/i, '')}` })
+      setEntries((list) => list.filter((e) => e.id !== entry.id))
     } finally {
       setBusy(false)
     }

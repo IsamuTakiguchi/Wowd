@@ -1522,3 +1522,289 @@ body {
 .mobile-bottombar .grow {
   max-width: 420px;
 }
+
+/* ---- 文書のタブ (Excel のシート見出し) ----------------------------------- */
+
+.tabbar {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 30px;
+  padding: 0 6px;
+  background: #e8e8e8;
+  border-top: 1px solid var(--ribbon-border);
+  font-size: 12px;
+  user-select: none;
+}
+
+.tabbar-list {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabbar-tab {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 0 4px 0 12px;
+  background: #dcdcdc;
+  border: 1px solid #c4c4c4;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  color: #444;
+  cursor: pointer;
+}
+
+.tabbar-tab:hover {
+  background: #ececec;
+}
+
+/* 表のタブは紙と同じ白で、本文とつながって見えるようにする (Excel と同じ) */
+.tabbar-tab.is-active {
+  background: var(--paper);
+  color: var(--ribbon-accent);
+  font-weight: 600;
+  margin-top: -1px;
+  border-color: var(--ribbon-border);
+}
+
+/* タブの色は下の帯で出す。Excel と同じく、表のタブでは細く、裏のタブでは太く塗る */
+.tabbar-tab[style*='--tab-color']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--tab-color);
+  border-radius: 0 0 3px 3px;
+}
+
+.tabbar-tab.is-active[style*='--tab-color']::after {
+  height: 2px;
+}
+
+.tabbar-tab.is-drop-target {
+  box-shadow: inset 3px 0 0 var(--ribbon-accent);
+}
+
+.tabbar-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabbar-dirty {
+  font-size: 9px;
+  color: var(--ribbon-accent);
+}
+
+.tabbar-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #777;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tabbar-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #222;
+}
+
+.tabbar-rename {
+  width: 140px;
+  font: inherit;
+  padding: 1px 4px;
+}
+
+.tabbar-add {
+  flex: none;
+  width: 30px;
+  border: none;
+  background: transparent;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.tabbar-add:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.tabbar-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 190px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+}
+
+.tabbar-menu button[role='menuitem'] {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tabbar-menu button[role='menuitem']:hover:not(:disabled) {
+  background: var(--ribbon-hover);
+}
+
+.tabbar-menu button:disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.tabbar-menu hr {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid #e2e2e2;
+}
+
+.tabbar-menu-label {
+  padding: 6px 14px 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tabbar-menu-colors {
+  display: flex;
+  gap: 6px;
+  padding: 4px 14px 6px;
+}
+
+.tabbar-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.tabbar-swatch[aria-checked='true'] {
+  outline: 2px solid #222;
+  outline-offset: 1px;
+}
+
+.tabbar-swatch.is-none {
+  background: linear-gradient(135deg, #fff 45%, #d13438 45%, #d13438 55%, #fff 55%);
+}
+
+/* スマホ: 指で押せる高さにする */
+.app.is-mobile .tabbar {
+  height: 40px;
+}
+
+.app.is-mobile .tabbar-close {
+  width: 28px;
+  height: 28px;
+}
+
+/* ---- 自動保存の切り替え ------------------------------------------------- */
+
+.autosave {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.autosave-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.autosave-switch:hover {
+  background: var(--ribbon-hover);
+}
+
+.autosave-track {
+  position: relative;
+  width: 30px;
+  height: 16px;
+  border-radius: 8px;
+  background: #b9b9b9;
+  transition: background 0.15s;
+}
+
+.autosave-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+
+.autosave-switch.is-on .autosave-track {
+  background: var(--ribbon-accent);
+}
+
+.autosave-switch.is-on .autosave-thumb {
+  transform: translateX(14px);
+}
+
+.autosave-state {
+  min-width: 2em;
+  color: var(--muted);
+}
+
+.autosave-status {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.autosave-status.is-error,
+.autosave-status.is-unavailable {
+  color: #a4262c;
+}
+
+/* スマホのメニューの中では 1 行ぶん使う */
+.autosave-menu {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ribbon-border);
+  justify-content: space-between;
+}
+
+.autosave-menu .autosave-switch {
+  min-height: 40px;
+}
+
+/* 狭い窓では状態の文字を畳む。切り替えそのものは残す */
+.app[data-size='medium'] .autosave-bar .autosave-status {
+  display: none;
+}

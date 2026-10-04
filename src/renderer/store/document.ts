@@ -35,6 +35,32 @@ export interface DocumentState {
    * document の参照変化を見ると、編集のたびに setContent が走って履歴が消える。
    */
   loadToken: number
+  /**
+   * 未保存の文書の名前 (「文書1」など)。保存するときの既定の名前にもなる。
+   *
+   * タブを複数開くと「無題」が何枚も並び、見分けがつかない。
+   * Word と同じく通し番号を振る。保存すればファイル名に置き換わる。
+   */
+  untitledName: string | null
+  /**
+   * 変更の通し番号。変更のたびに 1 増える。
+   *
+   * 保存は非同期なので、書き出している最中にも利用者は打ち続けられる。
+   * 保存の前後でこの番号が変わっていたら、保存後も「未保存」のまま残す。
+   * 残さないと、保存中に打った文字が保存済み扱いになり、次の保存まで誰も書かず、
+   * 閉じるときの確認も出ずに失われる。自動保存では数秒おきに保存するので実際に起きる。
+   */
+  revision: number
+  /**
+   * 次の読み込みで、内容を作り直す代わりに戻すエディタの状態。
+   *
+   * タブを切り替えるたびに内容を作り直すと、元に戻す履歴も選択位置も消える。
+   * 切り替えのときだけここに前の状態を置き、エディタはそれを丸ごと戻す。
+   * 型を ProseMirror に縛らないのは、この層が編集部品を知らなくて済むようにするため。
+   */
+  pendingEditorState: unknown | null
+  /** 次の読み込みで戻すスクロール位置 */
+  pendingScrollTop: number | null
 
   fileName: () => string
   markDirty: () => void
@@ -80,6 +106,83 @@ export interface DocumentState {
    * 打鍵のたびに全文を変換するのは O(文書長) で重すぎるので、保存時にだけ引き出す。
    */
   setDocProvider: (provider: (() => WowdDoc) | null) => void
+  /**
+   * エディタの「いまの状態」を取り出す口を登録する。タブを切り替えるときに使う。
+   * 戻り値は ProseMirror の EditorState だが、この層では中身を見ない。
+   */
+  setEditorProbe: (probe: EditorProbe | null) => void
+}
+
+export interface EditorProbe {
+  state: () => unknown
+  scrollTop: () => number
+}
+
+/** タブを切り替えるときに、文書ごと持ち運ぶ値 */
+export type DocumentData = Pick<
+  DocumentState,
+  | 'document'
+  | 'sourceBytes'
+  | 'filePath'
+  | 'dirty'
+  | 'numberingChanged'
+  | 'commentsChanged'
+  | 'headersChanged'
+  | 'tocChanged'
+  | 'unsupported'
+  | 'saveBlockedReason'
+  | 'untitledName'
+>
+
+/** 空の文書。まだ何も読み込んでいないタブの中身 */
+export const EMPTY_DOCUMENT_DATA: DocumentData = {
+  document: null,
+  sourceBytes: null,
+  filePath: null,
+  dirty: false,
+  numberingChanged: false,
+  commentsChanged: false,
+  headersChanged: false,
+  tocChanged: false,
+  unsupported: [],
+  saveBlockedReason: null,
+  untitledName: null
+}
+
+/** いまの文書から、持ち運ぶ値だけを抜き出す */
+export function pickDocumentData(state: DocumentState): DocumentData {
+  return {
+    document: state.document,
+    sourceBytes: state.sourceBytes,
+    filePath: state.filePath,
+    dirty: state.dirty,
+    numberingChanged: state.numberingChanged,
+    commentsChanged: state.commentsChanged,
+    headersChanged: state.headersChanged,
+    tocChanged: state.tocChanged,
+    unsupported: state.unsupported,
+    saveBlockedReason: state.saveBlockedReason,
+    untitledName: state.untitledName
+  }
+}
+
+/**
+ * エディタが持っている最新の本文を、文書に書き戻した写しを返す。
+ *
+ * ストアの document.doc は保存したときにしか更新されない (打鍵のたびに
+ * 全文を変換すると重すぎるため)。タブを離れるときは、エディタが消える前に
+ * 最新の本文を拾っておかないと、切り替えた瞬間に編集が消える。
+ */
+export function captureLatestDocument(state: DocumentState): WowdDocument | null {
+  if (!state.document) return null
+  const latest = docProvider?.()
+  return latest ? { ...state.document, doc: latest } : state.document
+}
+
+/** エディタの状態とスクロール位置。エディタが無ければ null */
+export function captureEditor(): { state: unknown; scrollTop: number } | null {
+  if (!editorProbe) return null
+  return { state: editorProbe.state(), scrollTop: editorProbe.scrollTop() }
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
@@ -96,16 +199,21 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   unsupported: [],
   saveBlockedReason: null,
   loadToken: 0,
+  untitledName: null,
+  revision: 0,
+  pendingEditorState: null,
+  pendingScrollTop: null,
 
   fileName: () => {
-    const path = get().filePath
-    if (!path) return t.app.untitled
-    return path.split(/[\\/]/).pop() ?? t.app.untitled
+    const { filePath, untitledName } = get()
+    if (!filePath) return untitledName ?? t.app.untitled
+    return filePath.split(/[\\/]/).pop() ?? t.app.untitled
   },
 
-  markDirty: () => set({ dirty: true }),
-  markNumberingChanged: () => set({ numberingChanged: true, dirty: true }),
-  markTocChanged: () => set({ tocChanged: true, dirty: true }),
+  markDirty: () => set({ dirty: true, revision: get().revision + 1 }),
+  markNumberingChanged: () =>
+    set({ numberingChanged: true, dirty: true, revision: get().revision + 1 }),
+  markTocChanged: () => set({ tocChanged: true, dirty: true, revision: get().revision + 1 }),
   setError: (message) => set({ error: message }),
   blockSaving: (reason) => set({ saveBlockedReason: reason, error: reason }),
 
@@ -116,6 +224,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set({
       document: { ...current, resources: { ...current.resources, comments } },
       dirty: true,
+      revision: get().revision + 1,
       commentsChanged: true
     })
   },
@@ -135,6 +244,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         }
       },
       dirty: true,
+      revision: get().revision + 1,
       headersChanged: true
     })
   },
@@ -146,13 +256,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const sections = current.resources.sections.map((s, i) => (i === index ? patch(s) : s))
     set({
       document: { ...current, resources: { ...current.resources, sections } },
-      dirty: true
+      dirty: true,
+      revision: get().revision + 1
     })
   },
   dismissUnsupported: () => set({ unsupported: [] }),
 
   setDocProvider: (provider) => {
     docProvider = provider
+  },
+
+  setEditorProbe: (probe) => {
+    editorProbe = probe
   },
 
   async newDocument(template) {
@@ -171,6 +286,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         tocChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
+        pendingEditorState: null,
+        pendingScrollTop: null,
         loadToken: get().loadToken + 1
       })
     } catch (err) {
@@ -195,6 +312,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         tocChanged: false,
         unsupported: document.unsupported,
         saveBlockedReason: null,
+        // 開いたファイルには名前がある。未保存の通し番号は要らない
+        untitledName: filePath ? null : get().untitledName,
+        pendingEditorState: null,
+        pendingScrollTop: null,
         loadToken: get().loadToken + 1
       })
       if (filePath) await platform.addRecent(filePath)
@@ -246,7 +367,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async saveAs() {
-    const suggested = get().filePath ?? `${t.app.untitled}.docx`
+    const suggested = get().filePath ?? `${get().untitledName ?? t.app.untitled}.docx`
     const target = await platform.saveDialog(suggested)
     if (!target) return false
     return writeTo(target, get, set)
@@ -258,6 +379,8 @@ type Set = (partial: Partial<DocumentState>) => void
 
 /** エディタの現在ツリーを取り出す関数。Editor がマウント時に登録する */
 let docProvider: (() => WowdDoc) | null = null
+/** エディタの状態を取り出す口。Editor がマウント時に登録する */
+let editorProbe: EditorProbe | null = null
 
 async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
   const { document, sourceBytes, saveBlockedReason } = get()
@@ -268,6 +391,8 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
     return false
   }
   set({ busy: true, error: null })
+  // 書き出しを始めた時点の通し番号。終わったときに変わっていれば、途中で打たれている
+  const revisionAtStart = get().revision
   try {
     // 保存の直前にだけエディタから最新のツリーを引き出す
     const latest = docProvider?.() ?? document.doc
@@ -280,10 +405,20 @@ async function writeTo(path: string, get: Get, set: Set): Promise<boolean> {
     })
     await platform.writeFile(path, bytes)
     await platform.addRecent(path)
+
+    if (get().revision !== revisionAtStart) {
+      // 書き出しているあいだに変更が入った。ファイルの場所と原本だけ更新し、
+      // 「未保存」と書き直しの印は残す。中身 (document) も今のものを残す。
+      // 書き出し開始時の写しで上書きすると、その間に足したコメントなどが消える
+      set({ filePath: path, untitledName: null, sourceBytes: bytes })
+      return true
+    }
+
     // 保存後は出力を新しい原本とする。次の保存もここから差分を作る
     set({
       document: toSave,
       filePath: path,
+      untitledName: null,
       dirty: false,
       numberingChanged: false,
       commentsChanged: false,

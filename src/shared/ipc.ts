@@ -124,6 +124,14 @@ export interface WowdApi {
   saveDialog(defaultPath?: string): Promise<string | null>
   /** アトミック書き込み (tmp へ書いて fsync → rename)。保存中のクラッシュで原本を失わない */
   writeFile(path: string, bytes: Uint8Array): Promise<void>
+  /**
+   * そのファイルへ、利用者に尋ねずに上書きできるか。
+   *
+   * 自動保存はこれが真のときだけ動く。ブラウザ版では、保存先の「持ち手」を
+   * 得ていないファイルに書くとダウンロードになり、自動保存のたびに
+   * ダウンロードが積み上がってしまう。
+   */
+  canWriteInPlace(path: string): boolean
   readTemplate(id: TemplateId): Promise<Uint8Array>
   /** 画像を選んで読み込む。取り消されたら null */
   pickImage(): Promise<PickedImage | null>
@@ -133,7 +141,19 @@ export interface WowdApi {
   clearRecent(): Promise<void>
 
   /** 自動保存。未保存の変更をクラッシュから守る */
-  saveRecovery(bytes: Uint8Array, originalPath: string | null, name: string): Promise<void>
+  /**
+   * 退避を書く。
+   *
+   * slot は未保存の文書を見分けるための短い英数字。タブを複数開くと
+   * 「無題」が何枚も並ぶので、元のパスだけでは退避先が重なって上書きし合う。
+   * 実際の保存先は main 側がこの値から決める (renderer にパスを組ませない)。
+   */
+  saveRecovery(
+    bytes: Uint8Array,
+    originalPath: string | null,
+    name: string,
+    slot?: string
+  ): Promise<void>
   listRecovery(): Promise<RecoveryEntry[]>
   readRecovery(id: string): Promise<Uint8Array | null>
   clearRecovery(): Promise<void>

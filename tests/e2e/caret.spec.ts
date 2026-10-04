@@ -71,8 +71,16 @@ async function boxes(): Promise<{
   return page.evaluate(() => {
     const pb = document.querySelector('[data-testid="wowd-page"]')!.getBoundingClientRect()
     const cb = document.querySelector('.wowd-content')!.getBoundingClientRect()
+    // 紙のうち、画面に見えている部分に限る。A4 は窓より背が高いので、
+    // 紙の下端は画面の外にある。そこを押すと下のタブやステータスバーを押してしまう
+    const vb = document.querySelector('.wowd-viewport')!.getBoundingClientRect()
     return {
-      page: { l: pb.left, r: pb.right, t: pb.top, b: pb.bottom },
+      page: {
+        l: pb.left,
+        r: pb.right,
+        t: Math.max(pb.top, vb.top),
+        b: Math.min(pb.bottom, vb.bottom)
+      },
       content: { l: cb.left, r: cb.right, t: cb.top, b: cb.bottom }
     }
   })

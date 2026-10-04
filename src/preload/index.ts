@@ -16,6 +16,8 @@ const api: WowdApi = {
   openPath: (path: string) => ipcRenderer.invoke(IPC.openPath, path),
   saveDialog: (defaultPath?: string) => ipcRenderer.invoke(IPC.saveDialog, defaultPath),
   writeFile: (path: string, bytes: Uint8Array) => ipcRenderer.invoke(IPC.writeFile, path, bytes),
+  // デスクトップ版は本物のパスに書くので、いつでもその場で上書きできる
+  canWriteInPlace: (path: string) => path.length > 0,
   readTemplate: (id: TemplateId) => ipcRenderer.invoke(IPC.readTemplate, id),
   pickImage: () => ipcRenderer.invoke(IPC.pickImage),
 
@@ -23,8 +25,8 @@ const api: WowdApi = {
   addRecent: (path: string) => ipcRenderer.invoke(IPC.addRecent, path),
   clearRecent: () => ipcRenderer.invoke(IPC.clearRecent),
 
-  saveRecovery: (bytes: Uint8Array, originalPath: string | null, name: string) =>
-    ipcRenderer.invoke(IPC.saveRecovery, bytes, originalPath, name),
+  saveRecovery: (bytes: Uint8Array, originalPath: string | null, name: string, slot?: string) =>
+    ipcRenderer.invoke(IPC.saveRecovery, bytes, originalPath, name, slot),
   listRecovery: () => ipcRenderer.invoke(IPC.listRecovery),
   readRecovery: (id: string) => ipcRenderer.invoke(IPC.readRecovery, id),
   clearRecovery: () => ipcRenderer.invoke(IPC.clearRecovery),

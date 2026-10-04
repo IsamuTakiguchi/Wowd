@@ -40,8 +40,10 @@ function isSafeId(id: unknown): id is string {
  * 元のパスから決めるので、同じファイルを編集し続けても増えない。
  * 未保存の文書はひとつの枠を共有する。
  */
-function idFor(originalPath: string | null): string {
-  if (!originalPath) return 'untitled'
+function idFor(originalPath: string | null, slot: string | null = null): string {
+  // 未保存の文書はタブごとに枠を分ける。分けないと「無題」同士が上書きし合う。
+  // slot は renderer から来るので、英数字だけに限ってから使う
+  if (!originalPath) return slot && /^[A-Za-z0-9]{1,24}$/.test(slot) ? `untitled-${slot}` : 'untitled'
   let hash = 0x811c9dc5
   for (let i = 0; i < originalPath.length; i++) {
     hash ^= originalPath.charCodeAt(i)
@@ -97,10 +99,10 @@ async function prune(): Promise<void> {
 export function registerRecoveryIpc(): void {
   ipcMain.handle(
     IPC.saveRecovery,
-    async (_e, bytes: Uint8Array, originalPath: unknown, name: unknown) => {
+    async (_e, bytes: Uint8Array, originalPath: unknown, name: unknown, slot: unknown) => {
       if (!(bytes instanceof Uint8Array) || bytes.length === 0) return
       const path = typeof originalPath === 'string' && originalPath ? originalPath : null
-      const id = idFor(path)
+      const id = idFor(path, typeof slot === 'string' ? slot : null)
       await mkdir(dir(), { recursive: true })
       await writeAtomic(join(dir(), `${id}.docx`), bytes)
       const manifest: Manifest = {

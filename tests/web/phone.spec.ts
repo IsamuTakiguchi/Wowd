@@ -18,6 +18,12 @@ async function openFixture(page: Page, name: string): Promise<void> {
 }
 
 test.beforeEach(async ({ page }) => {
+  // PC の Chrome は showOpenFilePicker で開く (保存先の持ち手が得られ、自動保存で書き戻せる)。
+  // Playwright はその画面を操作できないので、ここでは無い環境 (スマホなど) の
+  // ファイル選択欄の道筋を確かめる
+  await page.addInitScript(() => {
+    delete (window as unknown as { showOpenFilePicker?: unknown }).showOpenFilePicker
+  })
   await page.goto('/')
   await page.waitForSelector('.wowd-content', { timeout: 20_000 })
 })

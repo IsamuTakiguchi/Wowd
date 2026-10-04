@@ -2,12 +2,15 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { useDocumentStore } from './store/document'
+import { useTabsStore } from './store/tabs'
 import './styles.css'
 import { platform, isElectron } from './platform'
 
 // E2E テストからファイルを読み込ませるための入口。
 // preload 経由の API しか公開していないので、ここが無いとテストが実ファイルを開けない。
 ;(window as unknown as { __wowdStore: unknown }).__wowdStore = useDocumentStore
+// E2E からタブを操作するための入口。実ファイルを開く・裏のタブの状態を見る、に使う
+;(window as unknown as { __wowdTabs: unknown }).__wowdTabs = useTabsStore
 
 // E2E から PDF 出力を直接叩くための入口。
 // 保存ダイアログを出さずに出力先を指定できるようにする。

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useDocumentStore } from '../../store/document'
+import { useTabsStore } from '../../store/tabs'
+import { AutoSaveToggle } from '../AutoSaveToggle'
 import { useUiStore, type RevisionDisplay } from '../../store/ui'
 import { threadComments } from '@core/docx/read/comments'
 import { exportPdf } from '../../print/exportPdf'
@@ -58,7 +60,7 @@ export function MobileTopBar({ editor }: { editor: Editor | null }): React.JSX.E
         <strong>Wowd</strong> {fileName}
         {dirty ? t.app.dirtyMark : ''}
       </span>
-      <button type="button" data-testid="file-open" title="この端末のファイルを開く" onClick={() => void store().openDialog()}>
+      <button type="button" data-testid="file-open" title="この端末のファイルを開く" onClick={() => void useTabsStore.getState().openDialog()}>
         開く
       </button>
       <button
@@ -85,7 +87,9 @@ export function MobileTopBar({ editor }: { editor: Editor | null }): React.JSX.E
         <>
           <div className="mobile-scrim" onClick={() => setMenuOpen(false)} />
           <div className="mobile-menu" role="menu">
-            <button type="button" role="menuitem" data-testid="file-new" onClick={closeThen(() => void store().newDocument('blank-a4'))}>
+            {/* スマホでも自動保存を切り替えられるようにする。上のバーには置く場所が無い */}
+            <AutoSaveToggle variant="menu" />
+            <button type="button" role="menuitem" data-testid="file-new" onClick={closeThen(() => void useTabsStore.getState().newTab('blank-a4'))}>
               新規文書
             </button>
             <button type="button" role="menuitem" data-testid="file-pdf" disabled={!hasDocument} onClick={closeThen(printPdf)}>

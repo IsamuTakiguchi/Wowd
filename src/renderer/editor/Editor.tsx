@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { buildExtensions } from './extensions'
-import { Selection } from '@tiptap/pm/state'
+import { Selection, type EditorState } from '@tiptap/pm/state'
 import { fromWowdDoc } from './serialize/fromWowdDoc'
 import { toWowdDoc } from './serialize/toWowdDoc'
 import { useDocumentStore } from '../store/document'
@@ -54,6 +54,7 @@ export function WowdEditor({
   const resources = useDocumentStore((s) => s.document?.resources ?? null)
   const markDirty = useDocumentStore((s) => s.markDirty)
   const setDocProvider = useDocumentStore((s) => s.setDocProvider)
+  const setEditorProbe = useDocumentStore((s) => s.setEditorProbe)
 
   const zoom = useUiStore((s) => s.zoom)
   const zoomMode = useUiStore((s) => s.zoomMode)
@@ -249,11 +250,22 @@ export function WowdEditor({
     const loaded = useDocumentStore.getState().document
     if (!loaded) return
     loading.current = true
+    // タブを切り替えたときは、作り直さずに前の状態を丸ごと戻す。
+    // 作り直すと元に戻す履歴も選択位置も消え、タブを行き来しただけで
+    // 「元に戻す」が効かなくなる
+    const { pendingEditorState, pendingScrollTop } = useDocumentStore.getState()
     try {
       // 画像を blob URL にしてから内容を差し替える。
       // 逆順だと最初の描画で画像が出ない
       mediaRegistry.load(loaded.resources)
-      editor.commands.setContent(fromWowdDoc(loaded.doc) as never, { emitUpdate: false })
+      if (pendingEditorState) {
+        editor.view.updateState(pendingEditorState as EditorState)
+        // ページ分割は取引 (transaction) が来ないと測り直さない。
+        // 何も変えない取引を投げて、紙の枚数と下地を描き直させる
+        editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false))
+      } else {
+        editor.commands.setContent(fromWowdDoc(loaded.doc) as never, { emitUpdate: false })
+      }
       // リストの行頭記号を描くために numbering.xml をプラグインへ渡す
       ;(editor.commands as unknown as { setNumberingTable: (t: unknown) => void }).setNumberingTable(
         loaded.resources.numbering
@@ -270,8 +282,32 @@ export function WowdEditor({
         )
     } finally {
       loading.current = false
+      // 一度使ったら捨てる。残すと次の読み込みで古い状態が戻ってしまう
+      if (pendingEditorState) {
+        useDocumentStore.setState({ pendingEditorState: null, pendingScrollTop: null })
+      }
+    }
+
+    // スクロール位置は、ページ分割が紙を並べ終えてから戻す
+    if (pendingScrollTop != null) {
+      const target = pendingScrollTop
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (viewportRef.current) viewportRef.current.scrollTop = target
+        })
+      )
     }
   }, [editor, loadToken])
+
+  // タブを切り替えるとき、ストアがエディタの「いまの状態」を拾えるようにする
+  useEffect(() => {
+    if (!editor) return
+    setEditorProbe({
+      state: () => editor.state,
+      scrollTop: () => viewportRef.current?.scrollTop ?? 0
+    })
+    return () => setEditorProbe(null)
+  }, [editor, setEditorProbe])
 
   const flowStyle = useMemo(
     () => flowCss(resources, section, geometry, viewMode === 'print', mobile),
