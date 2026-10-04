@@ -1905,3 +1905,10 @@ body {
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+.okaguchi-result {
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 220px;
+  overflow: auto;
+}
