@@ -19,7 +19,8 @@
   "exclude": [
     "tests/unit/schemaCoverage.test.ts",
     "tests/unit/trackChanges.test.ts",
-    "tests/unit/image.test.ts"
+    "tests/unit/image.test.ts",
+    "tests/unit/saveRace.test.ts"
   ],
   "compilerOptions": {
     "composite": true,
