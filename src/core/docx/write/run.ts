@@ -117,6 +117,9 @@ export function writeRunProps(set: MarkSet): string {
     )
   }
   if (p?.shd) add('w:shd', el('w:shd', { 'w:val': 'clear', 'w:color': 'auto', 'w:fill': p.shd }))
+  if (p?.fitText) {
+    add('w:fitText', el('w:fitText', { 'w:val': p.fitText.val, 'w:id': p.fitText.id ?? undefined }))
+  }
   if (p?.vertAlign) add('w:vertAlign', valEl('w:vertAlign', p.vertAlign))
   if (p?.lang) {
     add('w:lang', el('w:lang', { 'w:val': p.lang.val, 'w:eastAsia': p.lang.eastAsia }))

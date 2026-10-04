@@ -18,6 +18,7 @@ import {
   boolVal,
   intVal,
   findChild,
+  intAttr,
   serializeChildren
 } from '../xml'
 
@@ -40,6 +41,7 @@ const KNOWN_RPR = new Set([
   'w:w',
   'w:kern',
   'w:vertAlign',
+  'w:fitText',
   'w:rStyle',
   'w:lang'
 ])
@@ -152,6 +154,11 @@ export function readRunProps(rPr: XNode | undefined): ParsedRunProps {
       case 'w:w':
         props.w = intVal(child)
         break
+      case 'w:fitText': {
+        const val = intAttr(child, 'w:val')
+        if (val != null) props.fitText = { val, id: intAttr(child, 'w:id') }
+        break
+      }
       case 'w:kern':
         props.kern = intVal(child)
         break

@@ -58,6 +58,15 @@ export function runPropsToStyle(rp: RunProps): string {
     css['transform-origin'] = 'left'
     css['white-space'] = 'pre'
   }
+  if (rp.fitText) {
+    // 均等割り付け。決まった幅の箱に入れ、字間を均等に空ける
+    css['display'] = 'inline-block'
+    css['width'] = `${twipToPt(rp.fitText.val)}pt`
+    css['text-align'] = 'justify'
+    css['text-align-last'] = 'justify'
+    css['white-space'] = 'nowrap'
+    css['vertical-align'] = 'bottom'
+  }
   if (rp.vertAlign === 'superscript') {
     css['vertical-align'] = 'super'
     css['font-size'] = 'smaller'

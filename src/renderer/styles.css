@@ -1887,3 +1887,21 @@ body {
 .wowd-dialog-error {
   color: #b3261e;
 }
+
+/* 当事者欄の見本。紙と同じく 1 行 37 字の幅で見せる */
+.okaguchi-party-preview {
+  font-size: 11px;
+  width: 37em;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: 'MS Mincho', 'ＭＳ 明朝', 'Noto Serif CJK JP', serif;
+}
+
+.okaguchi-fit {
+  display: inline-block;
+  text-align: justify;
+  text-align-last: justify;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

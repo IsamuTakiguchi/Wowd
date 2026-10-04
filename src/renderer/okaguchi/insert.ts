@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import type { RunProps } from '@core/model/types'
+import type { PartyLine } from '@core/okaguchi/party'
 import { DEFAULT_RUN_PROPS } from '@core/css/runCss'
 
 /** いまのカーソル位置の文字書式 (無ければ null) */
@@ -64,6 +65,57 @@ export function insertParagraphs(editor: Editor, lines: string[]): void {
       .focus()
       .insertContentAt({ from: pos, to: pos + $from.parent.nodeSize }, content)
       .run()
+    return
+  }
+  editor.chain().focus().insertContent(content).run()
+}
+
+let fitId = Math.floor(Math.random() * 1_000_000) + 1_000
+
+/**
+ * 当事者欄などの段落を差し込む。
+ *
+ * 字下げは字数 (w:leftChars)。均等割り付けは Word の w:fitText で表すので、
+ * Word で開いても同じに割り付けられる。
+ *
+ * @param pitchTwip 1 字の幅 (twip)。割り付けの幅の計算に使う
+ */
+export function insertLines(editor: Editor, lines: PartyLine[], pitchTwip: number): void {
+  if (lines.length === 0) return
+  const content = lines.map((line) => ({
+    type: 'paragraph',
+    attrs: {
+      ind: {
+        leftChars: Math.round(line.indent * 100),
+        left: Math.round(line.indent * pitchTwip),
+        firstLineChars: 0,
+        firstLine: 0
+      }
+    },
+    content: line.runs.map((run) =>
+      run.fit
+        ? {
+            type: 'text',
+            text: run.text,
+            marks: [
+              {
+                type: 'textStyle',
+                attrs: {
+                  runProps: {
+                    ...DEFAULT_RUN_PROPS,
+                    fitText: { val: Math.round(run.fit * pitchTwip), id: fitId++ }
+                  }
+                }
+              }
+            ]
+          }
+        : { type: 'text', text: run.text }
+    )
+  }))
+  const { $from } = editor.state.selection
+  if ($from.parent.isTextblock && $from.parent.content.size === 0) {
+    const pos = $from.before()
+    editor.chain().focus().insertContentAt({ from: pos, to: pos + $from.parent.nodeSize }, content).run()
     return
   }
   editor.chain().focus().insertContent(content).run()

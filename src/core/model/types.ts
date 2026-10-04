@@ -357,6 +357,11 @@ export interface RunProps {
   /** カーニングを行う最小サイズ */
   kern: HalfPt | null
   vertAlign: 'superscript' | 'subscript' | null
+  /**
+   * w:fitText — 均等割り付け。文字列をこの幅 (twip) に伸ばす・縮める。
+   * id は割り付けの範囲を表す (同じ id の連続したランが 1 つの範囲)
+   */
+  fitText?: { val: Twip; id: number | null } | null
   rStyle: string | null
   lang: { val?: string; eastAsia?: string } | null
   /** 未対応の w:rPr 子要素 */
